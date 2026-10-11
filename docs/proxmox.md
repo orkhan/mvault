@@ -66,4 +66,4 @@ What was verified: both scripts pass `shellcheck` and `bash -n`, and the install
 
 ## Submitting to community-scripts
 
-Their contribution guide requires new scripts to be sent to their development repository first, tested on a real Proxmox instance, and reviewed; acceptance is not guaranteed and may depend on project adoption. The metadata sheet for that submission is in [`proxmox/SUBMISSION.md`](../proxmox/SUBMISSION.md).
+Their contribution guide requires new scripts to be sent to their development repository first, tested on a real Proxmox instance, and reviewed; acceptance is not guaranteed and may depend on project adoption. The plan is to submit only after a real Proxmox test and once v0.4.0 has some real users; until then this page's one-liner is the supported route. The metadata sheet for that submission is in [`proxmox/SUBMISSION.md`](../proxmox/SUBMISSION.md).

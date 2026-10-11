@@ -40,3 +40,20 @@ Your encryption key and salt carry over unchanged. Database migrations for this 
 ## Key rotation
 
 Not part of routine upgrades; see [Security](security.md#rotating-the-key).
+
+
+## PostgreSQL major versions in the all-in-one image
+
+Each image line pins one PostgreSQL major version (0.4.x uses **PostgreSQL 15**). A future image that ships a newer major will say so in its release notes, and it **refuses to start** on a data directory written by a different major (it logs a clear error instead of touching the data). To move to it, dump from the old image and restore into a fresh volume on the new one *(untested until the first major change; the commands match [Backup and restore](backup-restore.md))*:
+
+```bash
+# 1. With the OLD image still running, take a logical dump and copy your secrets
+docker exec -u postgres mvault /usr/lib/postgresql/15/bin/pg_dump -h /run/postgresql -U mvault -Fc mvault > mvault.dump
+docker cp mvault:/data/config/secrets.env ./secrets.env      # holds the encryption key and salt
+
+# 2. Start the NEW image on an empty volume, put secrets.env into /data/config/ before first start, then restore
+docker run -d --name mvault-new -v mvault-data-new:/data ... ghcr.io/orkhan/mvault:<new-version>
+docker exec -i -u postgres mvault-new pg_restore -h /run/postgresql -U mvault -d mvault --clean --if-exists < mvault.dump
+```
+
+If you would rather not repeat this, use an external PostgreSQL (the `slim` image) and upgrade it with your own tooling.

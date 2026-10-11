@@ -1,5 +1,7 @@
 # Security policy
 
+> mVault has not been independently audited. See [docs/security.md](docs/security.md) for the threat model and known limits.
+
 mVault stores sensitive data, so security reports are taken seriously. Please read [docs/security.md](docs/security.md) for the threat model and known limits first.
 
 ## Supported versions

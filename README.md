@@ -8,6 +8,8 @@
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
+> **Security note:** mVault has **not been independently audited**. Encryption at rest protects database leaks and backups, but the key lives next to the app, so anyone who controls the running host can read everything. Read [Security](docs/security.md) before storing anything you cannot afford to lose.
+>
 > **Status:** v0.4.0 is the first public release. The application has run in a homelab since 0.1.0; the container images and installers are new in this release, so please report anything odd as an issue.
 
 mVault keeps a family's sensitive things in one private place: logins, bank cards, environment variables and API keys, JSON documents and scanned files. Everything is organised as *member → project → folder → record*, values are encrypted before they reach the database, and sharing is explicit and read-only. It is a small Django application: no browser extension, no cloud, no telemetry.

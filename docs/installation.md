@@ -173,3 +173,8 @@ A Docker-free installer (`curl … | sh`, systemd on Linux, a `mvault` command o
 2. Sign in as the administrator, change the password, and create member accounts (members get *Passwords* and *Bank Cards* projects automatically).
 3. Back up the data **and** the key ([Backup & restore](backup-restore.md)).
 4. Run `manage.py check_config` for a quick health report ([Troubleshooting](troubleshooting.md)).
+
+
+## About the bundled MinIO
+
+The all-in-one image and the native installer ship a MinIO built from a pinned upstream release, because the official images were withdrawn and upstream's community edition is in maintenance mode. mVault only speaks the S3 API, so you can use any S3-compatible store instead (SeaweedFS, Garage, Ceph, R2, B2, AWS S3): set `S3_ENDPOINT_URL`, the keys and the bucket names, and the embedded MinIO is skipped. Whether the bundled store should be replaced is revisited in 0.5, before the image-scan exemption for the pinned binary expires on 2027-01-11.

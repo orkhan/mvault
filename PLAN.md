@@ -111,11 +111,14 @@ Status legend: `[ ]` todo, `[x]` done.
 - [ ] Switch the maintainer's homelab to `ghcr.io/orkhan/mvault:<ver>-slim` with the existing PostgreSQL/MinIO and `MVAULT_ADMIN_EMAIL` preserved
 - [ ] Announce (GitHub release, r/selfhosted, awesome-selfhosted PR) once docs and CI are green
 
-## Risks and open questions
+## Risks and decisions (resolved 2026-10-11)
 
-- **MinIO upstream** is in maintenance mode / archived; pinning a source tag keeps builds reproducible but we won't get fixes. Mitigation: the app only needs S3 — document SeaweedFS/Garage as alternatives and keep the embedded store behind one provisioning script.
-- **Embedding PostgreSQL** means major-version upgrades inside the image need a dump/restore step; document it and pin the major version per image line.
-- **Security expectations**: a public password manager attracts scrutiny. Encryption is application-level (AES-GCM); key and salt live next to the app, so database-only leaks are covered but a full host compromise is not. State this plainly in `docs/security.md`. No independent audit yet.
-- **community-scripts acceptance** is not guaranteed and may require traction first; the standalone installer keeps Proxmox users covered meanwhile.
-- **Native installs vary by distro**: PostgreSQL package names/versions and service names differ (`postgresql` vs versioned units). The installer detects them and the docs list the tested matrix; unsupported distros get a clear message and the Docker path.
-- **Docker disk space** on the maintainer's workstation is tight (Docker Desktop VM nearly full); multi-arch builds need pruning or a remote builder (GitHub Actions does the real builds).
+| Risk | Decision |
+|---|---|
+| **MinIO upstream** is in maintenance mode; no future fixes. | Keep the pinned MinIO for 0.4.0 (scoped Trivy exemption until 2027-01-11); document S3 alternatives (SeaweedFS, Garage, …); revisit the embedded store in 0.5. |
+| **Embedded PostgreSQL** major upgrades need a data migration. | Pin the major per image line (0.4.x = PostgreSQL 15); the image refuses to start on a mismatched data directory; dump/restore procedure documented in `docs/upgrading.md`. |
+| **Security expectations** for a public password manager. | Before any announcement: a prominent "not independently audited" notice (README, SECURITY.md, `docs/security.md`). TOTP 2FA, passphrase-wrapped keys and an external review are post-0.4 roadmap items, not blockers. |
+| **community-scripts acceptance** is uncertain. | Submit only after a real Proxmox test and some adoption; the standalone one-liner in `docs/proxmox.md` covers Proxmox users meanwhile. |
+| **Native installs vary by distro.** | Officially support Debian/Ubuntu and Fedora/RHEL-like (as tested); others get a clear "unsupported" message and the Docker path. |
+| **Docker disk space** on the maintainer's workstation. | Prune build cache and dangling images only (done); GitHub Actions and a remote builder do the real builds. |
+| **Release timing** | Tag v0.4.0 as soon as CI is green on `main`; real arm64 and Proxmox checks follow as 0.4.x patches if they find anything. |

@@ -50,7 +50,7 @@ The installer asks nothing when it is not attached to a terminal; use `--yes` fo
 | MinIO | Pinned-source binary from the release, localhost only | Same |
 | Services | `mvault-web.service`, `mvault-minio.service` (and `postgresql`), **enabled at boot and started**, run as user `mvault` with systemd sandboxing | Plain processes managed by the `mvault` command, **no auto-start** |
 
-On macOS install PostgreSQL first with `brew install postgresql@17` (or use `--no-postgres --database-url …`). Supported Linux families: Debian/Ubuntu (`apt`) and Fedora/RHEL-like (`dnf`).
+On macOS install PostgreSQL first with `brew install postgresql@17` (or use `--no-postgres --database-url …`). **Supported:** Debian/Ubuntu (`apt`) and Fedora/RHEL-like (`dnf`) with systemd. Rocky/Alma and Raspberry Pi OS are expected to work but untested. Other distributions are not supported: the installer stops with a clear message, and you can use the Docker images or `--no-postgres --database-url …` with your own PostgreSQL.
 
 ## The `mvault` command
 

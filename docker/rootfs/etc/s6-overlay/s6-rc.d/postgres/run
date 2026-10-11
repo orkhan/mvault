@@ -5,6 +5,13 @@ if [ "${MVAULT_DB_MODE:-embedded}" != "embedded" ]; then
     exec sleep infinity
 fi
 PGDATA=/data/postgres
+WANT_MAJOR="${PGBIN#/usr/lib/postgresql/}"; WANT_MAJOR="${WANT_MAJOR%%/*}"
+if [ -s "$PGDATA/PG_VERSION" ] && [ "$(cat "$PGDATA/PG_VERSION")" != "$WANT_MAJOR" ]; then
+    echo "[postgres] FATAL: /data/postgres was created by PostgreSQL $(cat "$PGDATA/PG_VERSION") but this image runs PostgreSQL $WANT_MAJOR." >&2
+    echo "[postgres]        Refusing to start so the data is not damaged. Restore your data with the dump/restore steps in docs/upgrading.md" >&2
+    echo "[postgres]        (start the previous image tag, pg_dump, then restore into a fresh volume on this image)." >&2
+    exit 1
+fi
 if [ ! -s "$PGDATA/PG_VERSION" ]; then
     echo "[postgres] initialising a new cluster in $PGDATA"
     pwfile="$(mktemp)"; printf '%s' "$DB_PASSWORD" > "$pwfile"; chown postgres "$pwfile"
