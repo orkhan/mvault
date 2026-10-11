@@ -13,7 +13,6 @@ mVault follows semantic-ish versioning while it is pre-1.0: minor versions (0.x)
    # or: docker pull ghcr.io/orkhan/mvault:<version> && recreate the container with the same volume and variables
    ```
 
-   (untested until v0.4.0 images exist)
 4. Migrations run automatically at start. Watch `docker logs mvault`; the container is healthy once `/health/` answers.
 5. Run `manage.py check_config` and sign in.
 

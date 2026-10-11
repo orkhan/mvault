@@ -9,7 +9,7 @@ mVault installs in four ways. Pick one; they all run the same application.
 | Mixed: embedded PostgreSQL + your MinIO (or the reverse) | [3](#3-mixing-embedded-and-external-parts) |
 | Native Linux / macOS, Proxmox LXC | [4](#4-native-linux-macos-and-proxmox-lxc) |
 
-> **Verification status (read this first).** The container images are published with **v0.4.0**; before then use [building from source](development.md). Commands below that were run against the real application are not marked; commands that rely on the not-yet-published images, or that I could not run, are marked *(untested)*. The MinIO provisioning commands in section 2 are the ones used in the maintainer's homelab.
+> **Verification status.** The v0.4.0 images were pulled from GHCR and run: the all-in-one image on amd64 (a remote Docker host) and on arm64 (Apple silicon, native), including embedded PostgreSQL and MinIO, bucket provisioning, a file/icon round trip and a restart; the slim image against an external PostgreSQL. The compose files are validated with `docker compose config`. Commands marked *(untested)* were not run against the real application.
 
 ## Image tags
 
@@ -36,13 +36,13 @@ docker run -d --name mvault --restart unless-stopped -p 8000:8000 \
   -v mvault-data:/data \
   -e MVAULT_BASE_URL=https://vault.example.com \
   -e MVAULT_ADMIN_EMAIL=you@example.com \
-  ghcr.io/orkhan/mvault:latest          # (untested until v0.4.0 images exist)
+  ghcr.io/orkhan/mvault:latest
 ```
 
 Or with Compose, using the file in this repository:
 
 ```bash
-docker compose up -d                    # (untested until v0.4.0 images exist)
+docker compose up -d
 ```
 
 First start:
@@ -133,7 +133,7 @@ mVault addresses buckets path-style (`https://host/bucket/key`), which MinIO, Ce
 cp .env.example .env
 # fill in: MVAULT_BASE_URL, DJANGO_SECRET_KEY, MVAULT_ENCRYPTION_KEY, MVAULT_ENCRYPTION_SALT,
 #          MVAULT_ADMIN_EMAIL, MVAULT_ADMIN_PASSWORD, DATABASE_URL, S3_*
-docker compose -f compose.external.yaml up -d      # (untested until v0.4.0 images exist)
+docker compose -f compose.external.yaml up -d
 ```
 
 Generate secrets with `openssl rand -hex 32` (`-hex 48` for `DJANGO_SECRET_KEY`). The container waits for the database, migrates, creates the first administrator, and serves on port 8000. If it exits immediately, read `docker logs mvault`: missing secrets and a missing admin password are reported by name.
@@ -158,7 +158,7 @@ docker run -d --name mvault -p 8000:8000 -v mvault-data:/data \
   -e MVAULT_BASE_URL=https://vault.example.com \
   -e S3_ENDPOINT_URL=https://minio.example.lan:9000 \
   -e S3_ACCESS_KEY=mvault-app -e S3_SECRET_KEY=… \
-  ghcr.io/orkhan/mvault:latest                      # (untested until v0.4.0 images exist)
+  ghcr.io/orkhan/mvault:latest  
 ```
 
 With an **external database** the all-in-one image refuses to invent an encryption key (a key stored on a volume that can be lost while the database survives would make your data unreadable). Provide `MVAULT_ENCRYPTION_KEY` and `MVAULT_ENCRYPTION_SALT`, or set `MVAULT_AUTO_GENERATE_SECRETS=true` if you accept that risk.

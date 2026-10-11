@@ -72,7 +72,6 @@ First public release.
 
 [Unreleased]: https://github.com/orkhan/mvault/compare/v0.4.0...HEAD
 [0.4.0]: https://github.com/orkhan/mvault/releases/tag/v0.4.0
-[0.3.0]: https://github.com/orkhan/mvault/releases/tag/v0.3.0
-[0.2.1]: https://github.com/orkhan/mvault/releases/tag/v0.2.1
-[0.2.0]: https://github.com/orkhan/mvault/releases/tag/v0.2.0
-[0.1.0]: https://github.com/orkhan/mvault/releases/tag/v0.1.0
+[0.3.0]: https://github.com/orkhan/mvault/commit/32b0578
+
+<!-- 0.1.0 to 0.2.1 were developed in a private repository before the project went public; the public history starts at 0.3.0 (see the link above). -->

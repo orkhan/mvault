@@ -65,12 +65,12 @@ Status legend: `[ ]` todo, `[x]` done.
 - [x] `compose.yaml` (all-in-one), `compose.external.yaml` (existing PostgreSQL + MinIO), `compose.dev.yaml`
 - [x] `scripts/provision-minio.sh` (idempotent buckets/policy/service user for people with their own MinIO) — covered by `manage.py provision_storage` and the `mc` recipe in `docs/installation.md` (no separate script)
 - [x] Smoke test on amd64 on a scratch host: aio first start/restart, embedded PostgreSQL + MinIO, file/icon round trips, slim with external PostgreSQL; trivy scan runs in CI
-- [ ] Run (not just build) the arm64 images — built by CI via QEMU, not yet executed on arm64 hardware
+- [x] Run (not just build) the arm64 images — built by CI via QEMU, not yet executed on arm64 hardware — executed natively on Apple silicon (aarch64): embedded PostgreSQL + MinIO, buckets, file/icon round trip
 
 ### Phase 3 — CI/CD (GitHub Actions)
 - [x] `ci.yml`: lint (ruff), tests against PostgreSQL service, `makemigrations --check`, `pip-audit`, hadolint, shellcheck — green on GitHub
 - [x] `docker.yml`: buildx multi-arch, push to GHCR on tags and `main` (`edge`), provenance + SBOM attestations, trivy scan — `edge`/`edge-slim` published; anonymous pull verified; version tags appear with the first `v*` tag
-- [ ] `release.yml`: on `v*` tag → GitHub release with notes; assets `mvault-<ver>-{linux,darwin}-{amd64,arm64}.tar.gz` (app + installer helpers), pinned-source MinIO binaries for the same four targets, and `SHA256SUMS` (signed with cosign/attestation) used by `install.sh` and the Proxmox installer — written and actionlint-clean but has never run; first real run is the v0.4.0 tag
+- [x] `release.yml`: on `v*` tag → GitHub release with notes; assets `mvault-<ver>-{linux,darwin}-{amd64,arm64}.tar.gz` (app + installer helpers), pinned-source MinIO binaries for the same four targets, and `SHA256SUMS` (signed with cosign/attestation) used by `install.sh` and the Proxmox installer — written and actionlint-clean but has never run; first real run is the v0.4.0 tag — ran green on the v0.4.0 tag: app tarball, four MinIO binaries + licenses, `SHA256SUMS`, `install.sh`
 - [x] Dependabot (pip, docker, actions), CodeQL, secret scanning + push protection
 - [x] GHCR package `ghcr.io/orkhan/mvault` public (anonymous pull verified, amd64 + arm64)
 - [ ] Branch protection on `main` (required CI checks) — **after v0.4.0 is released**, so it does not block release commits
@@ -86,7 +86,7 @@ Status legend: `[ ]` todo, `[x]` done.
 - [x] First-run bootstrap equals the container's: generated secrets (key, salt, DB/MinIO passwords), first-admin password printed once and forced to change
 - [x] `upgrade`: stop → backup (pg_dump + config) → new release → migrate → start, with rollback on failure
 - [x] Tested: macOS (Apple silicon), real systemd in Debian 12, Ubuntu 24.04 and Fedora 44 containers (install, reboot persistence, upgrade, rollback, backup/restore, re-run, uninstall/purge, checksum tamper)
-- [ ] Still untested: Raspberry Pi OS (arm64), Rocky/Alma, Intel Mac, macOS with a real Homebrew install, an unprivileged Proxmox LXC, and the real `curl | sh` path that resolves "latest" from GitHub (needs a published release)
+- [ ] Still untested: Raspberry Pi OS (arm64), Rocky/Alma, Intel Mac, macOS with a real Homebrew install, an unprivileged Proxmox LXC
 
 ### Phase 5 — Proxmox / community-scripts
 - [x] `ct/mvault.sh` + `install/mvault-install.sh` following the community-scripts template (Debian 13 LXC, 2 vCPU / 2 GB / 8 GB defaults, unprivileged) — `proxmox/`; syntax- and shellcheck-clean
@@ -107,7 +107,7 @@ Status legend: `[ ]` todo, `[x]` done.
 - [x] `CLAUDE.md` importing `@AGENTS.md` plus Claude-specific notes; `.claude/` kept out of the repo unless shared on purpose
 
 ### Phase 8 — Release and homelab switch-over
-- [ ] Tag `v0.4.0`, verify the GHCR multi-arch manifest and release assets, run every install path from scratch (Docker AIO, Docker external, native Linux VM, native macOS, fresh LXC)
+- [x] Tag `v0.4.0`, verify the GHCR multi-arch manifest and release assets, run every install path from scratch (Docker AIO, Docker external, native Linux VM, native macOS, fresh LXC) — tag pushed; release + images verified (six version tags, amd64+arm64); aio run on amd64 and arm64, slim with external PostgreSQL, and the real `curl | sh` on a systemd Debian 12 container
 - [ ] Switch the maintainer's homelab to `ghcr.io/orkhan/mvault:<ver>-slim` with the existing PostgreSQL/MinIO and `MVAULT_ADMIN_EMAIL` preserved
 - [ ] Announce (GitHub release, r/selfhosted, awesome-selfhosted PR) once docs and CI are green
 
