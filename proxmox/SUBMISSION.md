@@ -15,6 +15,7 @@ Prepared for a future submission to the community-scripts development repository
 | Credentials | Generated at install; saved to `/root/mvault.creds`; password change forced at first sign-in |
 | Install method | Native: PostgreSQL (apt), uv-managed Python 3.12 venv, MinIO (pinned source build from the release), systemd units, `mvault` CLI |
 | Update method | `mvault upgrade --yes` (backup, migrate, rollback on failure) |
+| Optional variables (`app_vars`) | `var_database_url` (**secret**), `var_s3_endpoint`, `var_s3_access_key` (**secret**), `var_s3_secret_key` (**secret**), `var_provision_buckets`, `var_no_storage`, `var_base_url`, `var_admin_email` — all exported from `ct/mvault.sh`; the install script reads them and only asks (whiptail, interactive runs only) when none is set |
 | Notes | Back up `/etc/mvault/mvault.env` (encryption key and salt). Optional external PostgreSQL / S3 via the installer's flags. |
 | Files | `proxmox/ct/mvault.sh`, `proxmox/install/mvault-install.sh` |
 | Logo | to be added (SVG/PNG) |

@@ -58,11 +58,29 @@ An update takes a backup first and rolls back if the new version does not start.
 
 ## Use your own PostgreSQL or S3 storage
 
-Run the [native installer](native-install.md) flags inside the container instead (`--no-postgres --database-url …`, `--no-minio --s3-endpoint …`).
+By default the container gets its own PostgreSQL and MinIO. When you run the helper interactively it asks two questions ("Use an existing PostgreSQL?" and "Use existing S3-compatible storage?"); answer *Yes* and fill in the details. For unattended installs set the variables before running the one-liner (they are read by the install script, and the credentials are never echoed):
+
+| Variable | Effect |
+|---|---|
+| `var_database_url` | `postgres://user:password@host:5432/dbname` — use this PostgreSQL, install none |
+| `var_s3_endpoint`, `var_s3_access_key`, `var_s3_secret_key` | Use this S3-compatible storage (MinIO, Ceph, …), install no MinIO. All three are required together |
+| `var_provision_buckets=yes` | Create the buckets (`mvault-icons`, `mvault-avatars`, `mvault-attachments`) if missing — needs `s3:CreateBucket` |
+| `var_no_storage=yes` | Run without object storage: icons, avatars and file records are unavailable |
+| `var_base_url` | Public URL, for example `https://vault.example.com` (default `http://<container-ip>:8000`) |
+| `var_admin_email` | First administrator (default `admin@mvault.local`) |
+
+```bash
+var_database_url='postgres://mvault:secret@pg.lan:5432/mvault' \
+var_s3_endpoint='http://minio.lan:9000' var_s3_access_key='AK' var_s3_secret_key='SK' var_provision_buckets=yes \
+COMMUNITY_SCRIPTS_URL=https://raw.githubusercontent.com/orkhan/mvault/main/proxmox \
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/orkhan/mvault/main/proxmox/ct/mvault.sh)"
+```
+
+Invalid values (a non-`postgres://` URL, an endpoint without `http(s)://`, an S3 endpoint without keys) stop the install with a clear message before anything is changed. With an external PostgreSQL, backing up that database is your responsibility; `mvault backup` inside the container still saves the configuration. The container-side layout and flags are described in [Native install](native-install.md).
 
 ## Testing
 
-What was verified: both scripts pass `shellcheck` and `bash -n`, and the installer they call is tested separately (see [native install](native-install.md)). **Not yet verified on a real Proxmox host:** container creation through the framework, systemd sandboxing inside an *unprivileged* LXC (the framework enables `nesting`, which the unit hardening needs), and the update path. If you try it, please report results in an issue.
+What was verified: both scripts pass `shellcheck` and `bash -n`; the mapping from the `var_*` settings to installer flags is covered by `proxmox/test/args-test.sh` (run in CI); the installer was run with the flags generated for *external PostgreSQL + no object storage* on a real-systemd Debian 12 container against a throwaway PostgreSQL (status showed PostgreSQL external, storage disabled, embedded services inactive, app healthy); and the installer itself is tested separately (see [native install](native-install.md)). The interactive questions use `whiptail` and are not yet exercised on a real Proxmox host. **Not yet verified on a real Proxmox host:** container creation through the framework, systemd sandboxing inside an *unprivileged* LXC (the framework enables `nesting`, which the unit hardening needs), and the update path. If you try it, please report results in an issue.
 
 ## Submitting to community-scripts
 

@@ -96,6 +96,10 @@ jobs:
           echo "$files"
           # shellcheck disable=SC2086
           shellcheck --severity=warning $files
+      - name: Proxmox helper scripts (lint and flag-mapping tests)
+        run: |
+          shellcheck --severity=warning -e SC1090,SC1091,SC2154,SC2034,SC2155 proxmox/ct/mvault.sh proxmox/install/mvault-install.sh proxmox/test/args-test.sh
+          bash proxmox/test/args-test.sh
 
   docker-build:
     name: Docker build (${{ matrix.target }}, amd64, no push)
