@@ -73,7 +73,7 @@ Status legend: `[ ]` todo, `[x]` done.
 - [x] `release.yml`: on `v*` tag → GitHub release with notes; assets `mvault-<ver>-{linux,darwin}-{amd64,arm64}.tar.gz` (app + installer helpers), pinned-source MinIO binaries for the same four targets, and `SHA256SUMS` (signed with cosign/attestation) used by `install.sh` and the Proxmox installer — written and actionlint-clean but has never run; first real run is the v0.4.0 tag — ran green on the v0.4.0 tag: app tarball, four MinIO binaries + licenses, `SHA256SUMS`, `install.sh`
 - [x] Dependabot (pip, docker, actions), CodeQL, secret scanning + push protection
 - [x] GHCR package `ghcr.io/orkhan/mvault` public (anonymous pull verified, amd64 + arm64)
-- [ ] Branch protection on `main` (required CI checks) — **after v0.4.0 is released**, so it does not block release commits
+- [x] Branch protection on `main` (required CI checks) — **after v0.4.0 is released**, so it does not block release commits — enabled after the v0.4.0 release: required CI checks, no force-push/deletion, owner can still push
 
 ### Phase 4 — Native installer for Linux and macOS (`curl | sh`)
 - [x] `install.sh`: detects OS/arch/distro, verifies prerequisites, downloads the release tarball and checks it against `SHA256SUMS`; flags `--version`, `--prefix`, `--port`, `--base-url`, `--no-postgres`, `--no-minio`, `--upgrade`, `--uninstall`, `--yes`; idempotent, safe to re-run; never overwrites existing secrets
@@ -108,7 +108,7 @@ Status legend: `[ ]` todo, `[x]` done.
 
 ### Phase 8 — Release and homelab switch-over
 - [x] Tag `v0.4.0`, verify the GHCR multi-arch manifest and release assets, run every install path from scratch (Docker AIO, Docker external, native Linux VM, native macOS, fresh LXC) — tag pushed; release + images verified (six version tags, amd64+arm64); aio run on amd64 and arm64, slim with external PostgreSQL, and the real `curl | sh` on a systemd Debian 12 container
-- [ ] Switch the maintainer's homelab to `ghcr.io/orkhan/mvault:<ver>-slim` with the existing PostgreSQL/MinIO and `MVAULT_ADMIN_EMAIL` preserved
+- [x] Switch the maintainer's homelab to `ghcr.io/orkhan/mvault:<ver>-slim` with the existing PostgreSQL/MinIO and `MVAULT_ADMIN_EMAIL` preserved — done 2026-10-11: `0.4.0-slim` from GHCR, backup first, admin e-mail/URL/time zone preserved; one admin, 45/45 records decrypt
 - [ ] Announce (GitHub release, r/selfhosted, awesome-selfhosted PR) once docs and CI are green
 
 ## Risks and decisions (resolved 2026-10-11)
