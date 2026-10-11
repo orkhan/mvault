@@ -2,7 +2,7 @@
 # Tests the var_* -> installer flag mapping of install/mvault-install.sh without Proxmox or the framework.
 #   bash proxmox/test/args-test.sh
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 # shellcheck disable=SC1090
 source <(sed -n '/^# BEGIN build_installer_args/,/^# END build_installer_args/p' install/mvault-install.sh)
 LOCAL_IP=10.0.0.5
