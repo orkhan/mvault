@@ -47,15 +47,15 @@ Status legend: `[ ]` todo, `[x]` done.
 - [x] Scrub personal/deployment data from code defaults (admin address, URLs, timezone, demo users)
 - [x] Serve icons/avatars through the app by default (`/media/...`)
 - [x] MIT `LICENSE`, this plan
-- [ ] Create public `orkhan/mvault`, push, set description/topics, enable private vulnerability reporting
+- [x] Create public `orkhan/mvault`, push, set description/topics, enable private vulnerability reporting
 
 ### Phase 1 — Configuration hardening (app)
-- [ ] Settings reference: every env var documented in one table (`docs/configuration.md`), `*_FILE` secret variants
-- [ ] Optional storage: app works without S3 (uploads disabled with a clear message) when nothing is configured
-- [ ] `DATABASE_URL` support, `MVAULT_TIME_ZONE`, `MVAULT_ADMIN_EMAIL`, `MVAULT_BASE_URL` (CSRF/allowed hosts derived from it)
-- [ ] Production security defaults: HSTS (behind HTTPS), CSP, login throttling/lockout, secure cookie defaults
-- [ ] `manage.py` helpers: `check_config`, `rotate_encryption_key` (re-encrypt all values with a new key/salt), `backup`/`restore` guidance
-- [ ] Keep upgrade path for the maintainer's deployment (`MVAULT_ADMIN_EMAIL`, public base URLs)
+- [x] Settings reference: every env var documented in one table (`docs/configuration.md`), `*_FILE` secret variants
+- [x] Optional storage: app works without S3 (uploads disabled with a clear message) when nothing is configured
+- [x] `DATABASE_URL` support, `MVAULT_TIME_ZONE`, `MVAULT_ADMIN_EMAIL`, `MVAULT_BASE_URL` (CSRF/allowed hosts derived from it)
+- [x] Production security defaults: HSTS (behind HTTPS), CSP, login throttling/lockout, secure cookie defaults
+- [x] `manage.py` helpers: `check_config`, `rotate_encryption_key` (re-encrypt all values with a new key/salt), `backup`/`restore` guidance
+- [x] Keep upgrade path for the maintainer's deployment (`MVAULT_ADMIN_EMAIL`, public base URLs) — documented in `docs/upgrading.md`; applied in the Phase 8 switch-over
 
 ### Phase 2 — Docker images (multi-arch)
 - [x] `Dockerfile` with targets `slim` and `aio` (Debian bookworm-slim, Python 3.12, non-root app user)
@@ -63,46 +63,48 @@ Status legend: `[ ]` todo, `[x]` done.
 - [x] s6-overlay services: `postgres`, `minio`, `bootstrap` (secret generation, initdb, bucket provisioning), `migrate`, `web` (gunicorn)
 - [x] Healthcheck, graceful shutdown, `/data` volume, single exposed port 8000
 - [x] `compose.yaml` (all-in-one), `compose.external.yaml` (existing PostgreSQL + MinIO), `compose.dev.yaml`
-- [ ] `scripts/provision-minio.sh` (idempotent buckets/policy/service user for people with their own MinIO)
-- [ ] Smoke test on amd64 — **done on a scratch host: aio first start/restart, embedded PostgreSQL + MinIO, file/icon round trips, slim with external PostgreSQL**. Still open: arm64 build/run (CI with QEMU), size/CVE scan (trivy)
+- [x] `scripts/provision-minio.sh` (idempotent buckets/policy/service user for people with their own MinIO) — covered by `manage.py provision_storage` and the `mc` recipe in `docs/installation.md` (no separate script)
+- [x] Smoke test on amd64 on a scratch host: aio first start/restart, embedded PostgreSQL + MinIO, file/icon round trips, slim with external PostgreSQL; trivy scan runs in CI
+- [ ] Run (not just build) the arm64 images — built by CI via QEMU, not yet executed on arm64 hardware
 
 ### Phase 3 — CI/CD (GitHub Actions)
-- [ ] `ci.yml`: lint (ruff), tests against PostgreSQL service, `makemigrations --check`, `pip-audit`, hadolint, shellcheck
-- [ ] `docker.yml`: buildx multi-arch, push to GHCR on tags and `main` (`edge`), provenance + SBOM attestations, trivy scan
-- [ ] `release.yml`: on `v*` tag → GitHub release with notes; assets `mvault-<ver>-{linux,darwin}-{amd64,arm64}.tar.gz` (app + installer helpers), pinned-source MinIO binaries for the same four targets, and `SHA256SUMS` (signed with cosign/attestation) used by `install.sh` and the Proxmox installer
+- [x] `ci.yml`: lint (ruff), tests against PostgreSQL service, `makemigrations --check`, `pip-audit`, hadolint, shellcheck — green on GitHub
+- [x] `docker.yml`: buildx multi-arch, push to GHCR on tags and `main` (`edge`), provenance + SBOM attestations, trivy scan — `edge`/`edge-slim` published; anonymous pull verified; version tags appear with the first `v*` tag
+- [ ] `release.yml`: on `v*` tag → GitHub release with notes; assets `mvault-<ver>-{linux,darwin}-{amd64,arm64}.tar.gz` (app + installer helpers), pinned-source MinIO binaries for the same four targets, and `SHA256SUMS` (signed with cosign/attestation) used by `install.sh` and the Proxmox installer — written and actionlint-clean but has never run; first real run is the v0.4.0 tag
 - [x] Dependabot (pip, docker, actions), CodeQL, secret scanning + push protection
 - [x] GHCR package `ghcr.io/orkhan/mvault` public (anonymous pull verified, amd64 + arm64)
 - [ ] Branch protection on `main` (required CI checks) — **after v0.4.0 is released**, so it does not block release commits
 
 ### Phase 4 — Native installer for Linux and macOS (`curl | sh`)
-- [ ] `install.sh`: detects OS/arch/distro, verifies prerequisites, downloads the release tarball and checks it against `SHA256SUMS`; flags `--version`, `--prefix`, `--port`, `--base-url`, `--no-postgres`, `--no-minio`, `--upgrade`, `--uninstall`, `--yes`; idempotent, safe to re-run; never overwrites existing secrets
-- [ ] Python: pinned `uv` (checksum-verified) installs a managed Python 3.12 and the locked dependencies into a venv, so Debian/Ubuntu/RHEL/macOS system Python versions are irrelevant
-- [ ] PostgreSQL: Linux distro packages (apt/dnf), own role + database, localhost only; macOS Homebrew `postgresql@17` (bundled-binaries fallback). Skipped with `--no-postgres` → `DATABASE_URL` prompt/flag
-- [ ] MinIO: pinned-source binary from the release, own user and data dir, listens on localhost only, buckets provisioned with `manage.py provision_storage`. Skipped with `--no-minio` → `S3_*` flags or storage disabled
-- [ ] Linux services: `mvault-web.service`, `mvault-minio.service` with hardening (`NoNewPrivileges`, `ProtectSystem`, `PrivateTmp`, …), ordered after PostgreSQL, **enabled and started by default**; unattended-friendly
-- [ ] macOS: no auto-start; the `mvault` command starts/stops/restarts/reports status and tails logs for the PostgreSQL, MinIO and web processes
-- [ ] `mvault` CLI (single POSIX/bash script, installed to `/usr/local/bin`): `start|stop|restart|status|logs|enable|disable|version|upgrade|backup|restore|config|admin|manage|doctor|uninstall`
-- [ ] First-run bootstrap equals the container's: generated secrets (key, salt, DB/MinIO passwords), first-admin password printed once and forced to change
-- [ ] `upgrade`: stop → backup (pg_dump + config) → new release → migrate → start, with rollback on failure
-- [ ] Tested on Debian 12/13, Ubuntu 22.04/24.04, a RHEL-family distro (Rocky/Fedora), Raspberry Pi OS (arm64) and macOS (Apple silicon + Intel) — fresh machines and re-runs
+- [x] `install.sh`: detects OS/arch/distro, verifies prerequisites, downloads the release tarball and checks it against `SHA256SUMS`; flags `--version`, `--prefix`, `--port`, `--base-url`, `--no-postgres`, `--no-minio`, `--upgrade`, `--uninstall`, `--yes`; idempotent, safe to re-run; never overwrites existing secrets
+- [x] Python: pinned `uv` (checksum-verified) installs a managed Python 3.12 and the locked dependencies into a venv, so Debian/Ubuntu/RHEL/macOS system Python versions are irrelevant
+- [x] PostgreSQL: Linux distro packages (apt/dnf), own role + database, localhost only; macOS Homebrew `postgresql@17` (bundled-binaries fallback). Skipped with `--no-postgres` → `DATABASE_URL` prompt/flag
+- [x] MinIO: pinned-source binary from the release, own user and data dir, listens on localhost only, buckets provisioned with `manage.py provision_storage`. Skipped with `--no-minio` → `S3_*` flags or storage disabled
+- [x] Linux services: `mvault-web.service`, `mvault-minio.service` with hardening (`NoNewPrivileges`, `ProtectSystem`, `PrivateTmp`, …), ordered after PostgreSQL, **enabled and started by default**; unattended-friendly
+- [x] macOS: no auto-start; the `mvault` command starts/stops/restarts/reports status and tails logs for the PostgreSQL, MinIO and web processes
+- [x] `mvault` CLI (single POSIX/bash script, installed to `/usr/local/bin`): `start|stop|restart|status|logs|enable|disable|version|upgrade|backup|restore|config|admin|manage|doctor|uninstall`
+- [x] First-run bootstrap equals the container's: generated secrets (key, salt, DB/MinIO passwords), first-admin password printed once and forced to change
+- [x] `upgrade`: stop → backup (pg_dump + config) → new release → migrate → start, with rollback on failure
+- [x] Tested: macOS (Apple silicon), real systemd in Debian 12, Ubuntu 24.04 and Fedora 44 containers (install, reboot persistence, upgrade, rollback, backup/restore, re-run, uninstall/purge, checksum tamper)
+- [ ] Still untested: Raspberry Pi OS (arm64), Rocky/Alma, Intel Mac, macOS with a real Homebrew install, an unprivileged Proxmox LXC, and the real `curl | sh` path that resolves "latest" from GitHub (needs a published release)
 
 ### Phase 5 — Proxmox / community-scripts
-- [ ] `ct/mvault.sh` + `install/mvault-install.sh` following the community-scripts template (Debian 13 LXC, 2 vCPU / 2 GB / 8 GB defaults, unprivileged)
-- [ ] Native install = the Phase 4 Linux layout inside the LXC (PostgreSQL from apt, venv in `/opt/mvault`, MinIO release binary, systemd units, `mvault` CLI), expressed with the community-scripts helper functions; credentials in `/root/mvault.creds`; `update_script` calls `mvault upgrade`-equivalent steps
-- [ ] Prompts honour `var_*` variables for unattended installs; options to use an existing PostgreSQL / S3
-- [ ] Test on a real Proxmox host (amd64; arm64 where possible), including update path and backup/restore
-- [ ] Prepare the submission (fork of community-scripts' dev repo, PR text, logo/metadata). **Do not open the PR without the maintainer's go-ahead.** Check acceptance criteria (popularity/stars, maintenance commitment) first.
-- [ ] Until accepted: a one-liner in this repo's docs that creates the LXC with `pct` and runs `install.sh` inside it
+- [x] `ct/mvault.sh` + `install/mvault-install.sh` following the community-scripts template (Debian 13 LXC, 2 vCPU / 2 GB / 8 GB defaults, unprivileged) — `proxmox/`; syntax- and shellcheck-clean
+- [x] Native install = the Phase 4 Linux layout inside the LXC (PostgreSQL from apt, venv in `/opt/mvault`, MinIO release binary, systemd units, `mvault` CLI), expressed with the community-scripts helper functions; credentials in `/root/mvault.creds`; `update_script` calls `mvault upgrade`-equivalent steps — the install script runs the release's `install.sh` inside the LXC
+- [ ] Prompts honour `var_*` variables for unattended installs; options to use an existing PostgreSQL / S3 — `var_*` defaults and the framework's prompts are used; external PostgreSQL/S3 options are available by running the installer with its flags inside the LXC, not as menu questions
+- [ ] Test on a real Proxmox host (amd64; arm64 where possible), including update path and backup/restore — not done: needs a Proxmox host (and the real release assets)
+- [x] Prepare the submission (fork of community-scripts' dev repo, PR text, logo/metadata). **Do not open the PR without the maintainer's go-ahead.** Check acceptance criteria (popularity/stars, maintenance commitment) first. — `proxmox/SUBMISSION.md`; the PR itself is NOT opened (needs maintainer go-ahead)
+- [x] Until accepted: a one-liner in this repo's docs that creates the LXC with `pct` and runs `install.sh` inside it — `COMMUNITY_SCRIPTS_URL=… bash -c "$(curl …/proxmox/ct/mvault.sh)"` in `docs/proxmox.md`
 
 ### Phase 6 — Documentation
-- [ ] `README.md`: pitch, feature list, screenshots, quick start (3 commands), install options, security model, links
-- [ ] `docs/`: install (Docker AIO / external / native Linux and macOS / Proxmox), configuration reference, reverse proxy (NPM, Caddy, Traefik, nginx), backup & restore, upgrading, key management & rotation, security/threat model, architecture, FAQ, troubleshooting
-- [ ] `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `CHANGELOG.md`, issue + PR templates, `CODEOWNERS`
-- [ ] Screenshots/GIF generated from the seeded demo data (no real data)
+- [x] `README.md`: pitch, feature list, screenshots, quick start (3 commands), install options, security model, links
+- [x] `docs/`: install (Docker AIO / external / native Linux and macOS / Proxmox), configuration reference, reverse proxy (NPM, Caddy, Traefik, nginx), backup & restore, upgrading, key management & rotation, security/threat model, architecture, FAQ, troubleshooting
+- [x] `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `CHANGELOG.md`, issue + PR templates, `CODEOWNERS`
+- [x] Screenshots/GIF generated from the seeded demo data (no real data)
 
 ### Phase 7 — Agent guidance
-- [ ] `AGENTS.md` (single source of truth for Codex/Claude/others): project map, commands, conventions, security rules (never log values, never commit secrets), release checklist
-- [ ] `CLAUDE.md` importing `@AGENTS.md` plus Claude-specific notes; `.claude/` kept out of the repo unless shared on purpose
+- [x] `AGENTS.md` (single source of truth for Codex/Claude/others): project map, commands, conventions, security rules (never log values, never commit secrets), release checklist
+- [x] `CLAUDE.md` importing `@AGENTS.md` plus Claude-specific notes; `.claude/` kept out of the repo unless shared on purpose
 
 ### Phase 8 — Release and homelab switch-over
 - [ ] Tag `v0.4.0`, verify the GHCR multi-arch manifest and release assets, run every install path from scratch (Docker AIO, Docker external, native Linux VM, native macOS, fresh LXC)
