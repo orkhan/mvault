@@ -4,14 +4,14 @@ All notable changes to mVault are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
-### Fixed
-- Add-record form: JSON and file fields now appear before Notes, and the subtitle no longer claims the type comes from the project.
-- JSON record view uses the full width; dashboard greeting no longer ends with an ellipsis.
+## [0.4.0] - 2026-10-11
 
-
-First public release is planned as **0.4.0**.
+First public release.
 
 ### Added
+- **Native installer** (`install.sh`) for Linux (systemd, enabled by default) and macOS, with the `mvault` command (`start stop restart status logs backup restore upgrade doctor ...`), checksum-verified downloads, automatic rollback on a failed upgrade, and options to use your own PostgreSQL or S3 storage.
+- **Proxmox VE LXC helper scripts** (`proxmox/ct/mvault.sh`, `proxmox/install/mvault-install.sh`) built on the native installer and the community-scripts framework.
+- **CI and release automation**: lint, tests, `pip-audit`, hadolint, shellcheck, CodeQL, multi-arch image publishing to GHCR with SBOM and provenance, release assets (app tarball, pinned-source MinIO binaries, `SHA256SUMS`).
 - Container images defined by one `Dockerfile` with two targets: `slim` (app only) and `aio` (app + PostgreSQL 15 + MinIO under s6-overlay), multi-arch (`linux/amd64`, `linux/arm64`) in CI. The all-in-one image skips its embedded PostgreSQL or MinIO when `DB_HOST`/`DATABASE_URL` or `S3_ENDPOINT_URL` are set. MinIO is built from a pinned upstream source tag.
 - `compose.yaml` (all-in-one), `compose.external.yaml` (own PostgreSQL/MinIO) and `compose.dev.yaml`.
 - Configuration: `DATABASE_URL`, `NAME_FILE` secret variants for every setting, `MVAULT_BASE_URL` (derives allowed hosts, CSRF origins, secure cookies, HSTS), `MVAULT_ADMIN_EMAIL`, `MVAULT_TIME_ZONE`, `MVAULT_HSTS_SECONDS`, `S3_REGION`.
@@ -30,8 +30,10 @@ First public release is planned as **0.4.0**.
   - `ICONS_PUBLIC_BASE_URL`/`AVATARS_PUBLIC_BASE_URL` default to empty (app-served media).
 - Demo data (`seed_local`) uses `alice@example.test` and `bob@example.test`.
 
-### Planned for 0.4.0 (not yet implemented)
-- Native installer for Linux (systemd) and macOS, the Proxmox LXC helper script, CI and release automation.
+### Fixed
+- Add-record form: JSON and file fields now appear before Notes, and the subtitle no longer claims the type comes from the project.
+- JSON record view uses the full width; dashboard greeting no longer ends with an ellipsis.
+- `cryptography` raised to a release without known vulnerabilities.
 
 ## [0.3.0] - 2026-10-11
 
@@ -64,7 +66,8 @@ First public release is planned as **0.4.0**.
 ### Added
 - Initial release: admin-managed member accounts with Argon2id password hashes; projects with fixed types (passwords, bank cards, secrets), folders and records; masked values with audited reveal/copy; record history; activity log; read-only project and record sharing with copy-to-vault; `.env` import/export for secret projects; English and Russian interface.
 
-[Unreleased]: https://github.com/orkhan/mvault/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/orkhan/mvault/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/orkhan/mvault/releases/tag/v0.4.0
 [0.3.0]: https://github.com/orkhan/mvault/releases/tag/v0.3.0
 [0.2.1]: https://github.com/orkhan/mvault/releases/tag/v0.2.1
 [0.2.0]: https://github.com/orkhan/mvault/releases/tag/v0.2.0
