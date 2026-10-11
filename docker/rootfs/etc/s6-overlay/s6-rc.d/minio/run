@@ -1,0 +1,8 @@
+#!/command/with-contenv bash
+set -euo pipefail
+if [ "${MVAULT_S3_MODE:-embedded}" != "embedded" ]; then
+    echo "[minio] external or disabled object storage; embedded MinIO disabled"
+    exec sleep infinity
+fi
+export MINIO_ROOT_USER="$S3_ACCESS_KEY" MINIO_ROOT_PASSWORD="$S3_SECRET_KEY" MINIO_BROWSER=off
+exec s6-setuidgid minio minio server /data/minio --address 127.0.0.1:9000 --config-dir /tmp/.minio --quiet

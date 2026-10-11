@@ -1,0 +1,82 @@
+#!/command/with-contenv bash
+# Decide which components are embedded, load or generate secrets, export them to the other services.
+set -euo pipefail
+CONF=/data/config/secrets.env
+ENVDIR=/run/s6/container_environment
+mkdir -p /data/config /data/postgres /data/minio /run/postgresql
+chmod 700 /data/config
+touch "$CONF" && chmod 600 "$CONF"
+
+get_saved() { sed -n "s/^$1=//p" "$CONF" | tail -n1; }
+provided() {  # value from the environment or from NAME_FILE
+    local name="$1" file="${1}_FILE"
+    if [ -n "${!file:-}" ]; then cat "${!file}"; elif [ -n "${!name:-}" ]; then printf '%s' "${!name}"; fi
+}
+export_var() { printf '%s' "$2" > "$ENVDIR/$1"; }
+# secret NAME GENERATOR  -> provided value, else saved value, else (if generating is allowed) a new one
+secret() {
+    local name="$1" gen="$2" value
+    value="$(provided "$name")"
+    [ -n "$value" ] || value="$(get_saved "$name")"
+    if [ -z "$value" ]; then
+        if [ "$gen" = "required" ]; then return 1; fi
+        value="$($gen)"
+        printf '%s=%s\n' "$name" "$value" >> "$CONF"
+        GENERATED+=("$name")
+    fi
+    export_var "$name" "$value"
+    printf -v "$name" '%s' "$value"
+}
+hex() { openssl rand -hex "$1"; }
+gen48() { hex 48; }; gen32() { hex 32; }; gen24() { hex 24; }
+GENERATED=()
+
+# --- which parts are embedded -------------------------------------------------------------------
+if [ -n "${DATABASE_URL:-}${DATABASE_URL_FILE:-}${DB_HOST:-}" ]; then DB_MODE=external; else DB_MODE=embedded; fi
+if [ -n "${S3_ENDPOINT_URL:-}" ]; then S3_MODE=external
+elif [ "${MVAULT_STORAGE:-embedded}" = "disabled" ]; then S3_MODE=disabled
+else S3_MODE=embedded; fi
+export_var MVAULT_DB_MODE "$DB_MODE"; export_var MVAULT_S3_MODE "$S3_MODE"
+echo "[init-config] database: $DB_MODE, object storage: $S3_MODE"
+
+# --- secrets -----------------------------------------------------------------------------------
+secret DJANGO_SECRET_KEY gen48
+if [ "$DB_MODE" = embedded ] || [ "${MVAULT_AUTO_GENERATE_SECRETS:-false}" = "true" ]; then
+    secret MVAULT_ENCRYPTION_KEY gen32; secret MVAULT_ENCRYPTION_SALT gen32
+else
+    # With an external database a generated key could be lost with this volume while the data survives.
+    if ! secret MVAULT_ENCRYPTION_KEY required || ! secret MVAULT_ENCRYPTION_SALT required; then
+        echo "[init-config] ERROR: with an external database you must set MVAULT_ENCRYPTION_KEY and MVAULT_ENCRYPTION_SALT" >&2
+        echo "[init-config]        (openssl rand -hex 32 each) and back them up. Or set MVAULT_AUTO_GENERATE_SECRETS=true." >&2
+        exit 1
+    fi
+fi
+if [ "$DB_MODE" = embedded ]; then
+    secret DB_PASSWORD gen24
+    export_var DB_HOST 127.0.0.1; export_var DB_PORT 5432; export_var DB_NAME mvault; export_var DB_USER mvault
+fi
+if [ "$S3_MODE" = embedded ]; then
+    secret S3_ACCESS_KEY gen24; secret S3_SECRET_KEY gen32
+    export_var S3_ENDPOINT_URL http://127.0.0.1:9000
+fi
+ADMIN_PASSWORD="$(provided MVAULT_ADMIN_PASSWORD)"; [ -n "$ADMIN_PASSWORD" ] || ADMIN_PASSWORD="$(get_saved MVAULT_ADMIN_PASSWORD)"
+if [ -z "$ADMIN_PASSWORD" ]; then
+    ADMIN_PASSWORD="$(gen24)"; printf 'MVAULT_ADMIN_PASSWORD=%s\n' "$ADMIN_PASSWORD" >> "$CONF"; export_var MVAULT_ADMIN_MUST_CHANGE true
+    ADMIN_EMAIL="${MVAULT_ADMIN_EMAIL:-admin@mvault.local}"
+    printf '\n==================================================================\n  mVault first start\n  Sign in as:  %s\n  Password:    %s\n  (you will be asked to change it; also saved in /data/config/secrets.env)\n==================================================================\n\n' "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
+fi
+export_var MVAULT_ADMIN_PASSWORD "$ADMIN_PASSWORD"
+
+# --- convenience defaults for a first run without a reverse proxy --------------------------------
+if [ -z "${MVAULT_BASE_URL:-}" ] && [ -z "${DJANGO_ALLOWED_HOSTS:-}" ]; then
+    export_var DJANGO_ALLOWED_HOSTS '*'
+    echo "[init-config] WARNING: MVAULT_BASE_URL is not set; accepting any Host header. Set it to your public URL." >&2
+fi
+if [ "${#GENERATED[@]}" -gt 0 ]; then
+    echo "[init-config] generated: ${GENERATED[*]} (stored in /data/config/secrets.env - BACK UP the /data volume, the encryption key lives there)"
+fi
+
+# --- ownership ---------------------------------------------------------------------------------
+chown -R postgres:postgres /data/postgres /run/postgresql
+chown -R minio:minio /data/minio
+chmod 700 /data/postgres

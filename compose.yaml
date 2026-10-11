@@ -1,0 +1,20 @@
+# All-in-one: mVault + PostgreSQL + MinIO in a single container. Everything lives in the "mvault-data" volume.
+#   docker compose up -d
+# Then open http://localhost:8000 (the first-start admin password is printed in `docker compose logs mvault`).
+services:
+  mvault:
+    image: ghcr.io/orkhan/mvault:latest
+    container_name: mvault
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # The public address users type into the browser. Use https://... when behind a reverse proxy.
+      MVAULT_BASE_URL: ${MVAULT_BASE_URL:-http://localhost:8000}
+      MVAULT_ADMIN_EMAIL: ${MVAULT_ADMIN_EMAIL:-admin@mvault.local}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - mvault-data:/data
+
+volumes:
+  mvault-data:

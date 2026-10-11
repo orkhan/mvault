@@ -1,0 +1,14 @@
+#!/command/with-contenv bash
+set -euo pipefail
+if [ "${MVAULT_DB_MODE:-embedded}" != "embedded" ]; then
+    echo "[postgres] external database configured; embedded PostgreSQL disabled"
+    exec sleep infinity
+fi
+PGDATA=/data/postgres
+if [ ! -s "$PGDATA/PG_VERSION" ]; then
+    echo "[postgres] initialising a new cluster in $PGDATA"
+    pwfile="$(mktemp)"; printf '%s' "$DB_PASSWORD" > "$pwfile"; chown postgres "$pwfile"
+    s6-setuidgid postgres "$PGBIN/initdb" -D "$PGDATA" -U mvault -E UTF8 --auth-host=scram-sha-256 --auth-local=trust --pwfile="$pwfile"
+    rm -f "$pwfile"
+fi
+exec s6-setuidgid postgres "$PGBIN/postgres" -D "$PGDATA" -c listen_addresses=127.0.0.1 -c unix_socket_directories=/run/postgresql

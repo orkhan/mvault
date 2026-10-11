@@ -1,0 +1,8 @@
+#!/command/with-contenv bash
+set -euo pipefail
+cd /app
+case "${MVAULT_S3_MODE:-embedded}" in
+    embedded) exec s6-setuidgid mvault python manage.py provision_storage --wait 90 ;;
+    external) [ "${MVAULT_PROVISION_BUCKETS:-false}" = "true" ] && exec s6-setuidgid mvault python manage.py provision_storage --wait 30 || exit 0 ;;
+    *) exit 0 ;;
+esac

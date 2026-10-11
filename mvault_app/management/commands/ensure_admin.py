@@ -7,7 +7,7 @@ class Command(BaseCommand):
     help = "Create the initial mVault administrator when missing."
     def handle(self, *args, **options):
         email = settings.ADMIN_EMAIL
-        password = os.environ.get("MVault_ADMIN_PASSWORD") or os.environ.get("MVAULT_ADMIN_PASSWORD")
+        password = settings.ADMIN_PASSWORD
         admin = User.objects.filter(email=email).first()
         if admin:
             if not admin.is_admin:
@@ -18,5 +18,8 @@ class Command(BaseCommand):
             return
         if not password:
             raise CommandError("Set MVAULT_ADMIN_PASSWORD to initialize the administrator")
-        User.objects.create_superuser(email=email, password=password, full_name="mVault Administrator")
+        admin = User.objects.create_superuser(email=email, password=password, full_name="mVault Administrator")
+        if os.environ.get("MVAULT_ADMIN_MUST_CHANGE", "").lower() in {"1", "true", "yes"}:
+            admin.must_change_password = True
+            admin.save(update_fields=["must_change_password"])
         self.stdout.write("Created mVault administrator")

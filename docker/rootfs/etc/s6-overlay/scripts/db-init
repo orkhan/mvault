@@ -1,0 +1,12 @@
+#!/command/with-contenv bash
+set -euo pipefail
+[ "${MVAULT_DB_MODE:-embedded}" = "embedded" ] || exit 0
+for _ in $(seq 1 60); do
+    s6-setuidgid postgres "$PGBIN/pg_isready" -q -h /run/postgresql && break
+    sleep 1
+done
+exists=$(s6-setuidgid postgres "$PGBIN/psql" -h /run/postgresql -U mvault -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'mvault'" || true)
+if [ "$exists" != "1" ]; then
+    echo "[db-init] creating database mvault"
+    s6-setuidgid postgres "$PGBIN/createdb" -h /run/postgresql -U mvault mvault
+fi

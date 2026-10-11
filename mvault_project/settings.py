@@ -109,6 +109,7 @@ APP_VERSION = "0.3.0"
 
 # --- Accounts ---------------------------------------------------------------------------------------
 ADMIN_EMAIL = (env("MVAULT_ADMIN_EMAIL") or "admin@mvault.local").strip().lower()
+ADMIN_PASSWORD = env("MVAULT_ADMIN_PASSWORD")  # only used to create the first administrator
 LOGIN_MAX_ATTEMPTS = int(env("MVAULT_LOGIN_MAX_ATTEMPTS", "5"))
 LOGIN_ATTEMPT_WINDOW_SECONDS = int(env("MVAULT_LOGIN_WINDOW_SECONDS", "900"))
 TRUST_PROXY_HEADERS = env_bool("MVAULT_TRUST_PROXY", True)  # use the proxy-appended X-Forwarded-For entry for throttling

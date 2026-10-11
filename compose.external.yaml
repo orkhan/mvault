@@ -1,0 +1,17 @@
+# mVault only ("slim" image) with your existing PostgreSQL and S3-compatible storage (MinIO, Ceph, ...).
+#   cp .env.example .env   # fill it in
+#   docker compose -f compose.external.yaml up -d
+services:
+  mvault:
+    image: ghcr.io/orkhan/mvault:latest-slim
+    container_name: mvault
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${MVAULT_PORT:-8000}:8000"
+    # Join the network your PostgreSQL / MinIO containers are on, if they run in Docker:
+    # networks: [backend]
+
+# networks:
+#   backend:
+#     external: true

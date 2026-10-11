@@ -1,0 +1,6 @@
+#!/command/with-contenv bash
+set -euo pipefail
+cd /app
+s6-setuidgid mvault python manage.py wait_for_db
+s6-setuidgid mvault python manage.py migrate --noinput
+s6-setuidgid mvault python manage.py ensure_admin

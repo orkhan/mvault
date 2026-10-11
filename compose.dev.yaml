@@ -1,0 +1,17 @@
+# Build from source and run with a throwaway database. For development only.
+#   docker compose -f compose.dev.yaml up --build
+services:
+  mvault:
+    build:
+      context: .
+      target: aio
+    ports:
+      - "8000:8000"
+    environment:
+      MVAULT_BASE_URL: http://localhost:8000
+      MVAULT_ADMIN_PASSWORD: change-me-dev-only-123
+    volumes:
+      - dev-data:/data
+
+volumes:
+  dev-data:
