@@ -1,0 +1,47 @@
+name: Mirror to Docker Hub
+
+# Disabled by default: runs only when triggered by hand (Actions -> "Mirror to Docker Hub" -> Run).
+# Needs the repository secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN (a Docker Hub access token with
+# write scope). Copies the already-published multi-arch GHCR manifests, so nothing is rebuilt.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag to mirror, e.g. 0.4.0 (also mirrors X.Y, latest, and the -slim variants)"
+        required: true
+      repository:
+        description: "Docker Hub repository"
+        required: true
+        default: orkhan/mvault
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Copy manifests
+        env:
+          VERSION: ${{ inputs.version }}
+          DEST: ${{ inputs.repository }}
+          SRC: ghcr.io/${{ github.repository }}
+        run: |
+          minor="${VERSION%.*}"
+          for suffix in "" "-slim"; do
+            for tag in "${VERSION}" "${minor}" "latest"; do
+              docker buildx imagetools create -t "docker.io/${DEST}:${tag}${suffix}" "${SRC}:${VERSION}${suffix}"
+            done
+          done

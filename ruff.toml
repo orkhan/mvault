@@ -1,0 +1,23 @@
+# Pragmatic lint for a dense, compact codebase: catch real bugs, do not force a reformat.
+target-version = "py312"
+line-length = 200
+extend-exclude = ["mvault_app/migrations"]
+
+[lint]
+# E/F: pycodestyle errors + pyflakes, B: bugbear, UP: pyupgrade (safe subset), S: bandit (security)
+select = ["E", "F", "W", "B", "S", "UP"]
+ignore = [
+  "E701", "E702", "E731",  # compact one-line style is accepted here
+  "E501",                  # long lines are accepted in this dense style
+  "B904",                  # raising from within except is handled case by case
+  "S101",                  # asserts are used in tests
+  "S311",                  # random is not used for secrets (see crypto.py / secrets module)
+]
+
+[lint.per-file-ignores]
+"mvault_app/templatetags/mvault_i18n.py" = ["F601"]  # RU dictionary has duplicate literal keys; the last one wins
+"mvault_app/management/commands/rotate_encryption_key.py" = ["S608"]  # table/column names are constants
+"mvault_app/storage.py" = ["S110"]  # best-effort cleanup of a replaced avatar
+"mvault_app/tests.py" = ["F841", "S608", "S105", "S106", "S108", "E402", "B017", "B018", "F811", "UP"]
+"mvault_app/management/commands/seed_local.py" = ["S105", "S106"]
+"mvault_project/settings.py" = ["S105"]

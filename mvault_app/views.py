@@ -5,9 +5,6 @@ import os
 import re
 import tempfile
 import zipfile
-import secrets
-import string
-from functools import wraps
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -21,11 +18,11 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import content_disposition_header
 from django.utils.text import slugify
-from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.http import require_POST
 from .decorators import admin_required, member_required
 from .forms import LoginForm, MemberCreateForm, ProjectForm, FolderForm, RecordForm, SetTemporaryPasswordForm
 from . import storage, throttle
-from .models import Attachment, AuditEvent, Folder, Project, ProjectShare, Record, RecordRevision, RecordShare, User, record_audit
+from .models import Attachment, AuditEvent, Folder, Project, ProjectShare, Record, RecordShare, User, record_audit
 from .utils import parse_env, env_value_type, export_env, file_sha256, human_size, pretty_json, save_revision
 
 

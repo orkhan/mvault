@@ -1,0 +1,12 @@
+failure-threshold: warning
+ignored:
+  - DL3008  # apt packages are not version-pinned: Debian point releases move them
+  - DL3013  # pip packages are pinned through requirements.txt
+  - DL3059  # consecutive RUN are kept separate for readability/caching
+  - DL3062  # `go run buildscripts/gen-ldflags.go` is a repo script, not `go install <pkg>`
+  - DL3006  # `FROM s6-${TARGETARCH}` refers to a build stage, not a registry image
+  - DL4006  # printf|sed pipelines in the MinIO build are guarded by explicit checks
+  - DL3025  # HEALTHCHECK/CMD python -c uses shell form deliberately
+trustedRegistries:
+  - docker.io
+  - cgr.dev

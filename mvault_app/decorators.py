@@ -1,7 +1,6 @@
 from functools import wraps
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from .models import User
 
 def member_required(view):
     @login_required

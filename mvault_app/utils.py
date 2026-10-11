@@ -2,8 +2,7 @@ import hashlib
 import json
 import re
 import shlex
-from django.utils import timezone
-from .models import AuditEvent, RecordRevision
+from .models import RecordRevision
 
 SECRET_TERMS = ("PASSWORD", "PASSWD", "SECRET", "TOKEN", "API_KEY", "ACCESS_KEY", "PRIVATE_KEY", "CREDENTIAL", "AUTH", "CLIENT_SECRET")
 CLEAR_PLAIN_TERMS = ("PUBLIC", "HOST", "PORT", "DEBUG", "ENV", "MODE", "REGION", "LANG", "TIMEZONE", "LOG_LEVEL", "FEATURE")

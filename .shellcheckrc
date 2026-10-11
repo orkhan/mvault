@@ -1,0 +1,3 @@
+# s6-overlay scripts use the /command/with-contenv shebang, which shellcheck cannot detect.
+shell=bash
+external-sources=true

@@ -3,7 +3,6 @@ import re
 import secrets
 import string
 from django import forms
-from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from .models import Project, User, VAULT_ICON_CHOICES
