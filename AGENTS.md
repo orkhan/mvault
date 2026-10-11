@@ -24,7 +24,7 @@ uv run --python 3.12 --with-requirements requirements.txt python manage.py check
 docker build --target slim -t mvault:slim .     # the aio target compiles MinIO and takes minutes
 ```
 
-All tests must pass before you finish. A logged `RuntimeError: down` during tests is expected (a test simulates a storage failure). CI (planned) will add ruff, hadolint and shellcheck; keep Python and shell tidy meanwhile.
+All tests must pass before you finish. A logged `RuntimeError: down` during tests is expected (a test simulates a storage failure). CI (`.github/workflows/ci.yml`) runs ruff (config in `ruff.toml`; run `ruff check .` locally if you have it), the tests against PostgreSQL, `makemigrations --check`, `manage.py check`, pip-audit, hadolint, shellcheck and a Docker build of both targets. Keep Python, shell and the Dockerfile clean for those.
 
 ## Conventions
 

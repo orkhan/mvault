@@ -11,6 +11,16 @@ mVault installs in four ways. Pick one; they all run the same application.
 
 > **Verification status (read this first).** The container images are published with **v0.4.0**; before then use [building from source](development.md). Commands below that were run against the real application are not marked; commands that rely on the not-yet-published images, or that I could not run, are marked *(untested)*. The MinIO provisioning commands in section 2 are the ones used in the maintainer's homelab.
 
+## Image tags
+
+| Tag | Image |
+|---|---|
+| `X.Y.Z`, `X.Y`, `latest` | all-in-one |
+| `X.Y.Z-slim`, `X.Y-slim`, `latest-slim` | slim (app only) |
+| `edge`, `edge-slim` | latest `main`, for testing only |
+
+All are multi-arch (`linux/amd64`, `linux/arm64`). Pin an exact version in production.
+
 ## What you need
 
 - A host that runs Docker (amd64 or arm64), for sections 1–3.

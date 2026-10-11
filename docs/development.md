@@ -43,7 +43,7 @@ uv run --python 3.12 --with-requirements requirements.txt python manage.py test
 uv run --python 3.12 --with-requirements requirements.txt python manage.py makemigrations --check --dry-run
 ```
 
-Both must pass before a pull request. Tests live in `mvault_app/tests.py`. Object storage is replaced by an in-memory `FakeStorage` by patching `mvault_app.storage.get_storage`; the settings supply dummy S3 values when running tests, so no MinIO is needed. A log line such as `RuntimeError: down` during the run comes from a test that simulates a storage failure and is expected.
+Both must pass before a pull request. CI also runs ruff (`ruff.toml`), `manage.py check`, pip-audit, hadolint, shellcheck and Docker builds of both targets. Tests live in `mvault_app/tests.py`. Object storage is replaced by an in-memory `FakeStorage` by patching `mvault_app.storage.get_storage`; the settings supply dummy S3 values when running tests, so no MinIO is needed. A log line such as `RuntimeError: down` during the run comes from a test that simulates a storage failure and is expected.
 
 ## Optional: local MinIO
 
