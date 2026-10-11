@@ -95,6 +95,9 @@ kv_put() { # kv_put <file> <KEY> <value>: add KEY only when it is not set yet (n
     printf "%s='%s'\n" "$2" "$3" >>"$1"
 }
 
+# Everything below runs inside main(), which is only called on the very last line: a download that is
+# cut short leaves main() unterminated, so the shell reports a syntax error and executes nothing.
+main() {
 # --- arguments -----------------------------------------------------------------------------------------
 VERSION="${MVAULT_VERSION:-}"
 PREFIX_ARG=""
@@ -633,3 +636,6 @@ else
     [ "$START" = 1 ] || printf '  Start it now with: mvault start\n'
 fi
 printf '  Put a reverse proxy (Caddy, nginx, Traefik, NPM...) with HTTPS in front for anything beyond localhost.\n'
+}
+
+main "$@"
