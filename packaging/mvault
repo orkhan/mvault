@@ -1,0 +1,750 @@
+#!/usr/bin/env bash
+# mvault - manage a native mVault installation.
+#
+#   Linux (system install)  : services are systemd units (mvault-web, mvault-minio) plus the distro PostgreSQL.
+#   macOS / user install    : PostgreSQL, MinIO and the web app are plain processes managed by this script.
+#
+# Layout (paths, modes) is read from layout.env, written by install.sh. Run `mvault help` for commands.
+set -euo pipefail
+
+CLI_VERSION="__CLI_VERSION__"
+GITHUB_REPO="${MVAULT_GITHUB_REPO:-orkhan/mvault}"
+
+die() { printf 'mvault: %s\n' "$*" >&2; exit 1; }
+warn() { printf 'mvault: warning: %s\n' "$*" >&2; }
+say() { printf '%s\n' "$*"; }
+
+# ---------------------------------------------------------------------------------------------------
+# Environment files: KEY=value / KEY='value' lines, parsed without shell evaluation.
+# ---------------------------------------------------------------------------------------------------
+load_kv() {
+    local line key val
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in '' | '#'*) continue ;; esac
+        key=${line%%=*}
+        val=${line#*=}
+        [[ $key =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+        if [[ $val == \'*\' ]] || [[ $val == \"*\" ]]; then val=${val:1:${#val}-2}; fi
+        export "$key=$val"
+    done <"$1"
+}
+
+find_layout() {
+    local candidate
+    for candidate in "${MVAULT_LAYOUT:-}" /etc/mvault/layout.env "$HOME/.config/mvault/layout.env" \
+        "$HOME/Library/Application Support/mvault/layout.env"; do
+        if [ -n "$candidate" ] && [ -f "$candidate" ]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+LAYOUT_FILE=""
+need_layout() {
+    LAYOUT_FILE="$(find_layout)" || die "no mVault installation found (layout.env missing). Install it with install.sh first."
+    load_kv "$LAYOUT_FILE"
+    : "${MVAULT_MODE:?layout.env is incomplete}"
+    ENV_FILE="$MVAULT_CONF_DIR/mvault.env"
+    MINIO_ENV_FILE="$MVAULT_CONF_DIR/minio.env"
+    RUN_DIR="$MVAULT_DATA_DIR/run"
+    LOG_DIR="$MVAULT_DATA_DIR/logs"
+    CURRENT="$MVAULT_PREFIX/current"
+    PY="$CURRENT/venv/bin/python"
+    [ -f "$ENV_FILE" ] || die "$ENV_FILE not found"
+}
+
+load_app_env() {
+    load_kv "$ENV_FILE"
+    PORT="${PORT:-8000}"
+}
+
+pg_bin() { # path of a PostgreSQL client/server binary
+    if [ -n "${MVAULT_PG_BIN:-}" ] && [ -x "$MVAULT_PG_BIN/$1" ]; then
+        printf '%s\n' "$MVAULT_PG_BIN/$1"
+    elif command -v "$1" >/dev/null 2>&1; then
+        command -v "$1"
+    else
+        local d
+        for d in /usr/lib/postgresql/*/bin /usr/pgsql-*/bin; do
+            [ -x "$d/$1" ] && { printf '%s\n' "$d/$1"; return 0; }
+        done
+        return 1
+    fi
+}
+
+is_root() { [ "$(id -u)" -eq 0 ]; }
+
+# Run a command as the service account (system install) or as the current user (user install).
+as_app() {
+    if [ "$MVAULT_MODE" = system ] && is_root; then
+        if command -v runuser >/dev/null 2>&1; then
+            runuser -u mvault -- "$@"
+        else
+            su -s /bin/sh mvault -c "$(printf '%q ' "$@")"
+        fi
+    elif [ "$MVAULT_MODE" = system ] && [ "$(id -un)" != mvault ]; then
+        die "this command needs root (try: sudo mvault $*)"
+    else
+        "$@"
+    fi
+}
+
+manage() { # manage <django-args...>: run manage.py with the application environment
+    load_app_env
+    (cd "$CURRENT" && as_app "$PY" manage.py "$@")
+}
+
+# ---------------------------------------------------------------------------------------------------
+# Component helpers
+# ---------------------------------------------------------------------------------------------------
+components() {
+    [ "${MVAULT_PG_MODE:-system}" = external ] || printf 'postgres '
+    [ "${MVAULT_MINIO_MODE:-embedded}" != embedded ] || printf 'minio '
+    printf 'web\n'
+}
+
+unit_of() {
+    case "$1" in
+        postgres) printf '%s\n' "${MVAULT_PG_UNIT:-postgresql}" ;;
+        minio) printf 'mvault-minio\n' ;;
+        web) printf 'mvault-web\n' ;;
+    esac
+}
+
+pid_file() { printf '%s/%s.pid\n' "$RUN_DIR" "$1"; }
+log_file() { printf '%s/%s.log\n' "$LOG_DIR" "$1"; }
+
+proc_running() {
+    local pf pid
+    pf="$(pid_file "$1")"
+    [ -f "$pf" ] || return 1
+    pid="$(cat "$pf" 2>/dev/null || true)"
+    [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
+}
+
+proc_stop() {
+    local pf pid i
+    pf="$(pid_file "$1")"
+    proc_running "$1" || { rm -f "$pf"; return 0; }
+    pid="$(cat "$pf")"
+    kill -TERM "$pid" 2>/dev/null || true
+    for i in $(seq 1 40); do
+        kill -0 "$pid" 2>/dev/null || break
+        sleep 0.5
+        [ "$i" -eq 40 ] && kill -KILL "$pid" 2>/dev/null || true
+    done
+    rm -f "$pf"
+}
+
+pg_running_user() {
+    local ctl
+    ctl="$(pg_bin pg_ctl)" || return 1
+    "$ctl" -D "$MVAULT_DATA_DIR/postgres" status >/dev/null 2>&1
+}
+
+db_endpoint() { # prints "host port" of the configured database
+    load_app_env
+    if [ -n "${DATABASE_URL:-}" ]; then
+        local rest hostport
+        rest="${DATABASE_URL#*://}"
+        rest="${rest#*@}"
+        hostport="${rest%%/*}"
+        printf '%s %s\n' "${hostport%%:*}" "$([ "${hostport#*:}" != "$hostport" ] && printf '%s' "${hostport#*:}" || printf 5432)"
+    else
+        printf '%s %s\n' "${DB_HOST:-127.0.0.1}" "${DB_PORT:-5432}"
+    fi
+}
+
+component_running() {
+    case "$1" in
+        postgres)
+            if [ "$MVAULT_MODE" = system ]; then
+                local h p
+                read -r h p < <(db_endpoint)
+                if pg_bin pg_isready >/dev/null 2>&1; then
+                    "$(pg_bin pg_isready)" -q -h "$h" -p "$p"
+                else
+                    systemctl is-active --quiet "$(unit_of postgres)"
+                fi
+            else
+                pg_running_user
+            fi
+            ;;
+        minio | web)
+            if [ "$MVAULT_MODE" = system ]; then systemctl is-active --quiet "$(unit_of "$1")"; else proc_running "$1"; fi
+            ;;
+    esac
+}
+
+wait_health() { # wait_health <seconds>
+    local i
+    load_app_env
+    for i in $(seq 1 "${1:-90}"); do
+        if curl -fsS -o /dev/null --max-time 3 "http://127.0.0.1:$PORT/health/" 2>/dev/null; then return 0; fi
+        sleep 1
+    done
+    return 1
+}
+
+# --- user-mode (macOS) process control -----------------------------------------------------------------
+user_start() {
+    mkdir -p "$RUN_DIR" "$LOG_DIR"
+    case "$1" in
+        postgres)
+            pg_running_user && return 0
+            local ctl
+            ctl="$(pg_bin pg_ctl)" || die "PostgreSQL binaries not found (MVAULT_PG_BIN=${MVAULT_PG_BIN:-unset})"
+            "$ctl" -D "$MVAULT_DATA_DIR/postgres" -l "$(log_file postgres)" -w \
+                -o "-p ${MVAULT_PG_PORT:-54329} -c listen_addresses=127.0.0.1 -c unix_socket_directories=''" start >/dev/null
+            ;;
+        minio)
+            proc_running minio && return 0
+            (
+                load_kv "$MINIO_ENV_FILE"
+                export MINIO_ROOT_USER MINIO_ROOT_PASSWORD MINIO_BROWSER
+                nohup "$MVAULT_MINIO_BIN" server "$MINIO_VOLUMES" --address "${MINIO_ADDRESS:-127.0.0.1:9000}" \
+                    --config-dir "$MVAULT_DATA_DIR/minio-config" --quiet >>"$(log_file minio)" 2>&1 &
+                echo $! >"$(pid_file minio)"
+            )
+            sleep 1
+            proc_running minio || die "MinIO did not start; see $(log_file minio)"
+            ;;
+        web)
+            proc_running web && return 0
+            load_app_env
+            (
+                cd "$CURRENT"
+                "$PY" manage.py wait_for_db
+                "$PY" manage.py migrate --noinput
+                "$PY" manage.py ensure_admin
+                if [ "${MVAULT_PROVISION_BUCKETS:-false}" = true ] || [ "${MVAULT_MINIO_MODE:-}" = embedded ]; then
+                    "$PY" manage.py provision_storage --wait 60 || warn "could not provision buckets"
+                fi
+                nohup "$CURRENT/venv/bin/gunicorn" mvault_project.wsgi:application --bind "${BIND_ADDRESS:-0.0.0.0}:$PORT" \
+                    --workers "${GUNICORN_WORKERS:-3}" --timeout "${GUNICORN_TIMEOUT:-120}" --access-logfile - >>"$(log_file web)" 2>&1 &
+                echo $! >"$(pid_file web)"
+            ) >>"$(log_file web)" 2>&1 || die "web start-up failed; see $(log_file web)"
+            ;;
+    esac
+}
+
+user_stop() {
+    case "$1" in
+        postgres)
+            pg_running_user || return 0
+            "$(pg_bin pg_ctl)" -D "$MVAULT_DATA_DIR/postgres" -m fast -w stop >/dev/null
+            ;;
+        *) proc_stop "$1" ;;
+    esac
+}
+
+# --- dispatchers --------------------------------------------------------------------------------------
+selected_components() { # selected_components <verb> [component]
+    local verb="$1" want="${2:-}" c all
+    all="$(components)"
+    if [ -n "$want" ]; then
+        for c in $all; do [ "$c" = "$want" ] && { printf '%s\n' "$c"; return 0; }; done
+        die "unknown component '$want' (have: $all)"
+    fi
+    case "$verb" in
+        start) printf '%s\n' "$all" ;;
+        stop) # reverse order; a system PostgreSQL is shared with other software, so it stays up
+            for c in web minio postgres; do
+                case " $all " in *" $c "*) ;; *) continue ;; esac
+                if [ "$c" = postgres ] && [ "$MVAULT_MODE" = system ]; then continue; fi
+                printf '%s ' "$c"
+            done
+            printf '\n'
+            ;;
+    esac
+}
+
+do_start() {
+    local c
+    for c in $(selected_components start "${1:-}"); do
+        if [ "$MVAULT_MODE" = system ]; then
+            if [ "$c" = postgres ]; then systemctl start "$(unit_of postgres)"; else systemctl start "$(unit_of "$c")"; fi
+        else
+            user_start "$c"
+        fi
+        say "started $c"
+    done
+    if [ -z "${1:-}" ] || [ "${1:-}" = web ]; then
+        if wait_health 120; then say "mVault is up: $(public_url)"; else warn "web did not become healthy yet; check: mvault logs"; fi
+    fi
+}
+
+do_stop() {
+    local c
+    for c in $(selected_components stop "${1:-}"); do
+        if [ "$MVAULT_MODE" = system ]; then systemctl stop "$(unit_of "$c")"; else user_stop "$c"; fi
+        say "stopped $c"
+    done
+}
+
+public_url() {
+    load_app_env
+    printf '%s\n' "${MVAULT_BASE_URL:-http://localhost:$PORT}"
+}
+
+cmd_status() {
+    local c state rc=0 detail h p version
+    version="$(cat "$CURRENT/VERSION" 2>/dev/null || echo unknown)"
+    load_app_env
+    say "mVault $version  ($MVAULT_MODE install; PostgreSQL: ${MVAULT_PG_MODE:-system}, MinIO: ${MVAULT_MINIO_MODE:-embedded})"
+    for c in postgres minio web; do
+        case " $(components) " in *" $c "*) ;; *) continue ;; esac
+        if component_running "$c"; then state="running"; else state="stopped"; rc=3; fi
+        case "$c" in
+            postgres) read -r h p < <(db_endpoint); detail="$h:$p" ;;
+            minio) detail="${MINIO_ADDRESS:-127.0.0.1:9000}" ;;
+            web) detail="${BIND_ADDRESS:-0.0.0.0}:$PORT" ;;
+        esac
+        printf '  %-9s %-8s %s\n' "$c" "$state" "$detail"
+    done
+    if [ "${MVAULT_PG_MODE:-system}" = external ]; then printf '  %-9s %-8s %s\n' postgres external "$(db_endpoint | tr ' ' ':')"; fi
+    if [ "${MVAULT_MINIO_MODE:-embedded}" = external ]; then printf '  %-9s %-8s %s\n' storage external "${S3_ENDPOINT_URL:-?}"; fi
+    if [ "${MVAULT_MINIO_MODE:-embedded}" = none ]; then printf '  %-9s %-8s %s\n' storage disabled "uploads off"; fi
+    if curl -fsS -o /dev/null --max-time 3 "http://127.0.0.1:$PORT/health/" 2>/dev/null; then say "  health    ok"; else say "  health    not responding"; [ "$rc" -eq 0 ] && rc=3; fi
+    say "URL: $(public_url)"
+    return "$rc"
+}
+
+cmd_logs() {
+    local svc="web" follow="" lines=100
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            web | minio | postgres) svc="$1" ;;
+            -f | --follow) follow=1 ;;
+            -n) shift; lines="${1:?-n needs a number}" ;;
+            *) die "usage: mvault logs [web|minio|postgres] [-f] [-n N]" ;;
+        esac
+        shift
+    done
+    if [ "$MVAULT_MODE" = system ]; then
+        command -v journalctl >/dev/null || die "journalctl not available"
+        # shellcheck disable=SC2086
+        journalctl -u "$(unit_of "$svc")" -n "$lines" --no-pager ${follow:+-f}
+    else
+        [ -f "$(log_file "$svc")" ] || die "no log yet: $(log_file "$svc")"
+        # shellcheck disable=SC2086
+        tail -n "$lines" ${follow:+-f} "$(log_file "$svc")"
+    fi
+}
+
+cmd_enable_disable() { # enable|disable
+    local verb="$1" c
+    [ "$MVAULT_MODE" = system ] || die "'$verb' is only available for Linux system installs. On macOS use: mvault start | stop"
+    for c in $(components); do
+        [ "$c" = postgres ] && [ "$verb" = disable ] && continue # never disable the shared database
+        systemctl "$verb" "$(unit_of "$c")" >/dev/null 2>&1
+        say "$verb""d $c"
+    done
+}
+
+# ---------------------------------------------------------------------------------------------------
+# config
+# ---------------------------------------------------------------------------------------------------
+redact() { # redact secrets for display
+    local line key val
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in '' | '#'*) printf '%s\n' "$line"; continue ;; esac
+        key=${line%%=*}
+        val=${line#*=}
+        case "$key" in
+            *SECRET* | *PASSWORD* | *_KEY | *SALT* | *TOKEN*) printf '%s=********\n' "$key" ;;
+            DATABASE_URL) printf '%s=%s\n' "$key" "$(printf '%s' "$val" | sed -E 's#(://[^:/@]+):[^@]*@#\1:********@#')" ;;
+            *) printf '%s\n' "$line" ;;
+        esac
+    done <"$1"
+}
+
+cmd_config() {
+    case "${1:-show}" in
+        show) say "# $ENV_FILE (secrets hidden)"; redact "$ENV_FILE" ;;
+        path) say "$ENV_FILE" ;;
+        edit) "${EDITOR:-vi}" "$ENV_FILE"; say "Restart to apply: mvault restart" ;;
+        get)
+            [ -n "${2:-}" ] || die "usage: mvault config get KEY"
+            ( load_kv "$ENV_FILE"; printf '%s\n' "${!2:-}" )
+            ;;
+        set)
+            [ -n "${2:-}" ] && [ $# -ge 3 ] || die "usage: mvault config set KEY VALUE"
+            [[ $2 =~ ^[A-Z_][A-Z0-9_]*$ ]] || die "invalid key"
+            case "$3" in *"'"* | *$'\n'*) die "value must not contain quotes or newlines" ;; esac
+            local tmp
+            tmp="$(mktemp "$ENV_FILE.XXXXXX")"
+            grep -v "^$2=" "$ENV_FILE" >"$tmp" || true
+            printf "%s='%s'\n" "$2" "$3" >>"$tmp"
+            chmod --reference="$ENV_FILE" "$tmp" 2>/dev/null || chmod 640 "$tmp"
+            if is_root && [ "$MVAULT_MODE" = system ]; then chown "$(stat -c '%U:%G' "$ENV_FILE" 2>/dev/null || echo root:mvault)" "$tmp" 2>/dev/null || true; fi
+            mv "$tmp" "$ENV_FILE"
+            say "$2 updated. Restart to apply: mvault restart"
+            ;;
+        *) die "usage: mvault config [show|path|edit|get KEY|set KEY VALUE]" ;;
+    esac
+}
+
+# ---------------------------------------------------------------------------------------------------
+# admin / manage / doctor
+# ---------------------------------------------------------------------------------------------------
+cmd_admin() {
+    case "${1:-}" in
+        reset-password)
+            local email="${2:-}" pw
+            pw="$(head -c 14 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+            load_app_env
+            email="${email:-${MVAULT_ADMIN_EMAIL:-admin@mvault.local}}"
+            MVAULT_RESET_EMAIL="$email" MVAULT_RESET_PASSWORD="$pw" manage shell -c '
+import os
+from mvault_app.models import User
+user = User.objects.filter(email__iexact=os.environ["MVAULT_RESET_EMAIL"]).first()
+if user is None:
+    raise SystemExit("No such user: " + os.environ["MVAULT_RESET_EMAIL"])
+user.set_password(os.environ["MVAULT_RESET_PASSWORD"])
+user.must_change_password = True
+user.is_active = True
+user.save(update_fields=["password", "must_change_password", "is_active"])
+' >/dev/null
+            say "Password for $email reset. New temporary password (shown once, must be changed at sign-in):"
+            say "  $pw"
+            ;;
+        *) die "usage: mvault admin reset-password [email]" ;;
+    esac
+}
+
+cmd_doctor() {
+    local issues=0 warnings=0 c h p
+    ok() { say "  ok    $*"; }
+    bad() { say "  FAIL  $*"; issues=$((issues + 1)); }
+    note() { say "  WARN  $*"; warnings=$((warnings + 1)); }
+    say "mVault doctor"
+    if [ -x "$PY" ]; then ok "Python venv: $("$PY" --version 2>&1)"; else bad "venv missing at $PY"; fi
+    if [ -f "$ENV_FILE" ]; then ok "config: $ENV_FILE"; else bad "config missing"; fi
+    if [ "$MVAULT_MODE" = system ]; then
+        local mode
+        mode="$(stat -c '%a' "$ENV_FILE" 2>/dev/null || true)"
+        case "$mode" in 640 | 600 | 400 | 440 | "") ok "config permissions $mode" ;; *) bad "config permissions $mode (should be 640 or stricter)" ;; esac
+    fi
+    for c in $(components); do
+        if component_running "$c"; then ok "$c running"; else bad "$c not running"; fi
+    done
+    if wait_health 3; then ok "web health endpoint answers on port $PORT"; else bad "web health endpoint not responding"; fi
+    read -r h p < <(db_endpoint)
+    ok "database endpoint $h:$p"
+    if [ -x "$PY" ]; then
+        local report line
+        if report="$(manage check_config 2>&1)"; then
+            while IFS= read -r line; do
+                case "$line" in
+                    '! '*) note "${line#! }" ;;
+                esac
+            done <<<"$report"
+        else
+            bad "check_config failed: $(printf '%s' "$report" | tail -n 1)"
+        fi
+    fi
+    command -v curl >/dev/null || bad "curl not installed"
+    if [ "$issues" -eq 0 ]; then say "No problems found ($warnings warning(s))."; else say "$issues problem(s) found ($warnings warning(s))."; return 1; fi
+}
+
+# ---------------------------------------------------------------------------------------------------
+# backup / restore
+# ---------------------------------------------------------------------------------------------------
+db_params() { # sets DBH DBP DBU DBW DBN from the Django settings (exact same logic as the app)
+    local out
+    out="$(manage shell -c '
+from django.conf import settings
+d = settings.DATABASES["default"]
+print("\t".join([d["HOST"], str(d["PORT"]), d["USER"], d["PASSWORD"], d["NAME"]]))' 2>/dev/null | tail -n1)"
+    IFS=$'\t' read -r DBH DBP DBU DBW DBN <<<"$out"
+    [ -n "${DBN:-}" ] || die "could not read database settings"
+}
+
+cmd_backup() {
+    local out="" with_minio=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --with-minio) with_minio=1 ;;
+            -o | --output) shift; out="${1:?--output needs a file}" ;;
+            *) die "usage: mvault backup [--with-minio] [-o FILE]" ;;
+        esac
+        shift
+    done
+    local dump work ts
+    dump="$(pg_bin pg_dump)" || die "pg_dump not found; install the PostgreSQL client tools"
+    ts="$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$MVAULT_DATA_DIR/backups"
+    out="${out:-$MVAULT_DATA_DIR/backups/mvault-$ts.tar.gz}"
+    work="$(mktemp -d)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '$work'" RETURN
+    umask 077
+    db_params
+    mkdir "$work/mvault-backup"
+    PGPASSWORD="$DBW" "$dump" -Fc -h "$DBH" -p "$DBP" -U "$DBU" -f "$work/mvault-backup/db.dump" "$DBN"
+    cp "$ENV_FILE" "$work/mvault-backup/mvault.env"
+    [ -f "$MINIO_ENV_FILE" ] && cp "$MINIO_ENV_FILE" "$work/mvault-backup/minio.env"
+    cp "$LAYOUT_FILE" "$work/mvault-backup/layout.env"
+    cat "$CURRENT/VERSION" >"$work/mvault-backup/VERSION" 2>/dev/null || true
+    if [ -n "$with_minio" ] && [ "${MVAULT_MINIO_MODE:-}" = embedded ]; then
+        tar -C "$MVAULT_DATA_DIR" -cf "$work/mvault-backup/minio-data.tar" minio
+    fi
+    tar -C "$work" -czf "$out" mvault-backup
+    chmod 600 "$out"
+    say "Backup written: $out"
+    say "It contains your encryption key and credentials - store it somewhere safe."
+}
+
+cmd_restore() {
+    local file="" with_config="" assume_yes=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --yes | -y) assume_yes=1 ;;
+            --with-config) with_config=1 ;;
+            -*) die "usage: mvault restore FILE [--with-config] [--yes]" ;;
+            *) file="$1" ;;
+        esac
+        shift
+    done
+    [ -f "$file" ] || die "usage: mvault restore FILE [--with-config] [--yes]"
+    local work restore
+    restore="$(pg_bin pg_restore)" || die "pg_restore not found"
+    work="$(mktemp -d)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '$work'" RETURN
+    tar -C "$work" -xzf "$file"
+    local b="$work/mvault-backup"
+    [ -f "$b/db.dump" ] || die "not an mVault backup: db.dump missing"
+    local old_key new_key
+    old_key="$(sed -n "s/^MVAULT_ENCRYPTION_KEY=//p" "$b/mvault.env" | tr -d "'\"")"
+    new_key="$(sed -n "s/^MVAULT_ENCRYPTION_KEY=//p" "$ENV_FILE" | tr -d "'\"")"
+    if [ "$old_key" != "$new_key" ] && [ -z "$with_config" ]; then
+        die "the backup uses a different encryption key than this installation. Restore with --with-config to also restore the configuration (including the key), otherwise the data cannot be decrypted."
+    fi
+    if [ -z "$assume_yes" ]; then
+        printf 'This REPLACES the current database with the backup. Type "restore" to continue: '
+        read -r reply
+        [ "$reply" = restore ] || die "aborted"
+    fi
+    do_stop >/dev/null
+    if [ -n "$with_config" ]; then
+        cp "$b/mvault.env" "$ENV_FILE"
+        [ -f "$b/minio.env" ] && cp "$b/minio.env" "$MINIO_ENV_FILE"
+        if [ "$MVAULT_MODE" = system ] && is_root; then chown root:mvault "$ENV_FILE" "$MINIO_ENV_FILE" 2>/dev/null || true; fi
+        chmod 640 "$ENV_FILE" 2>/dev/null || true
+    fi
+    if [ "$MVAULT_MODE" != system ]; then user_start postgres; fi
+    db_params
+    PGPASSWORD="$DBW" "$restore" --clean --if-exists --no-owner --no-privileges -h "$DBH" -p "$DBP" -U "$DBU" -d "$DBN" "$b/db.dump" \
+        || warn "pg_restore reported warnings (often harmless: objects that did not exist yet)"
+    if [ -f "$b/minio-data.tar" ] && [ "${MVAULT_MINIO_MODE:-}" = embedded ]; then
+        rm -rf "$MVAULT_DATA_DIR/minio"
+        tar -C "$MVAULT_DATA_DIR" -xf "$b/minio-data.tar"
+        if [ "$MVAULT_MODE" = system ] && is_root; then chown -R mvault:mvault "$MVAULT_DATA_DIR/minio"; fi
+    fi
+    do_start
+    say "Restore finished."
+}
+
+# ---------------------------------------------------------------------------------------------------
+# upgrade / uninstall
+# ---------------------------------------------------------------------------------------------------
+fetch_to() { # fetch_to <url-or-path> <dest>
+    case "$1" in
+        http://* | https://*) curl -fsSL --retry 3 -o "$2" "$1" ;;
+        file://*) cp "${1#file://}" "$2" ;;
+        *) cp "$1" "$2" ;;
+    esac
+}
+
+latest_version() {
+    local tag
+    tag="$(curl -fsSL "https://api.github.com/repos/$GITHUB_REPO/releases/latest" | sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' | head -n1 || true)"
+    [ -n "$tag" ] || die "could not determine the latest release"
+    printf '%s\n' "$tag"
+}
+
+sha256_of() { if command -v sha256sum >/dev/null; then sha256sum "$1" | cut -d' ' -f1; else shasum -a 256 "$1" | cut -d' ' -f1; fi; }
+
+cmd_upgrade() {
+    local target="" assume_yes="" force=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --version) shift; target="${1:?--version needs a value}" ;;
+            --yes | -y) assume_yes=1 ;;
+            --force) force=1 ;;
+            *) die "usage: mvault upgrade [--version X.Y.Z] [--yes] [--force]" ;;
+        esac
+        shift
+    done
+    local current_version base work
+    current_version="$(cat "$CURRENT/VERSION" 2>/dev/null || echo unknown)"
+    if [ -z "$target" ]; then
+        if [ -n "${MVAULT_RELEASE_BASE:-}" ]; then die "set --version when MVAULT_RELEASE_BASE is used"; fi
+        target="$(latest_version)"
+    fi
+    target="${target#v}"
+    if [ "$target" = "$current_version" ] && [ -z "$force" ]; then say "Already on $current_version. Use --force to reinstall."; return 0; fi
+    if [ -z "$assume_yes" ]; then
+        printf 'Upgrade mVault %s -> %s? A backup is taken first. [y/N] ' "$current_version" "$target"
+        read -r reply
+        case "$reply" in y | Y | yes) ;; *) die "aborted" ;; esac
+    fi
+    base="${MVAULT_RELEASE_BASE:-https://github.com/$GITHUB_REPO/releases/download/v$target}"
+    work="$(mktemp -d)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '$work'" RETURN
+    fetch_to "$base/SHA256SUMS" "$work/SHA256SUMS"
+    fetch_to "$base/install.sh" "$work/install.sh"
+    local want got
+    want="$(awk '$2 == "install.sh" || $2 == "*install.sh" {print $1}' "$work/SHA256SUMS")"
+    got="$(sha256_of "$work/install.sh")"
+    [ -n "$want" ] && [ "$want" = "$got" ] || die "install.sh does not match SHA256SUMS; aborting"
+
+    say "Stopping services..."
+    do_stop >/dev/null
+    local pre
+    pre="$MVAULT_DATA_DIR/backups/pre-upgrade-$current_version-$(date +%Y%m%d-%H%M%S).tar.gz"
+    if [ "$MVAULT_MODE" != system ]; then user_start postgres; fi
+    say "Backing up to $pre ..."
+    cmd_backup -o "$pre" >/dev/null
+    local old_target self_path
+    old_target="$(cd "$CURRENT" && pwd -P)"
+    self_path="$(command -v mvault 2>/dev/null || printf '%s' "$0")"
+    cp "$self_path" "$work/mvault.prev" 2>/dev/null || true
+    say "Installing $target ..."
+    if ! MVAULT_RELEASE_BASE="$base" sh "$work/install.sh" --upgrade --version "$target" --yes --no-start; then
+        warn "installation of $target failed; the previous version is still active"
+        do_start
+        return 1
+    fi
+    say "Starting $target ..."
+    do_start >/dev/null || true
+    if wait_health "${MVAULT_UPGRADE_HEALTH_TIMEOUT:-180}"; then
+        say "Upgraded to $target. Pre-upgrade backup kept at: $pre"
+        return 0
+    fi
+    warn "$target did not become healthy; rolling back to $current_version"
+    do_stop >/dev/null
+    ln -sfn "$old_target" "$CURRENT"
+    if [ -s "$work/mvault.prev" ]; then # put the previous CLI back as well (rename: this script is still running)
+        cp "$work/mvault.prev" "$self_path.rollback" && chmod 755 "$self_path.rollback" && mv -f "$self_path.rollback" "$self_path"
+    fi
+    cmd_restore "$pre" --with-config --yes >/dev/null 2>&1 || warn "database restore from $pre failed; restore it manually"
+    do_start >/dev/null || true
+    rm -rf "$work"
+    die "upgrade failed and was rolled back to $current_version (see: mvault logs)"
+}
+
+cmd_uninstall() {
+    local purge="" assume_yes=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --purge) purge=1 ;;
+            --yes | -y) assume_yes=1 ;;
+            *) die "usage: mvault uninstall [--purge] [--yes]" ;;
+        esac
+        shift
+    done
+    if [ -z "$assume_yes" ]; then
+        if [ -n "$purge" ]; then
+            printf 'This DELETES the mVault database, MinIO data, configuration and encryption key. Type "purge": '
+            read -r reply
+            [ "$reply" = purge ] || die "aborted"
+        else
+            printf 'Remove the mVault program and services (data and configuration are kept)? [y/N] '
+            read -r reply
+            case "$reply" in y | Y | yes) ;; *) die "aborted" ;; esac
+        fi
+    fi
+    load_app_env
+    local dbn="" dbu=""
+    if [ -n "$purge" ] && [ "${MVAULT_PG_MODE:-}" = system ]; then
+        db_params 2>/dev/null || true
+        dbn="${DBN:-}"
+        dbu="${DBU:-}"
+    fi
+    do_stop >/dev/null 2>&1 || true
+    if [ "$MVAULT_MODE" = system ]; then
+        systemctl disable mvault-web mvault-minio >/dev/null 2>&1 || true
+        rm -f /etc/systemd/system/mvault-web.service /etc/systemd/system/mvault-minio.service
+        systemctl daemon-reload || true
+        if [ -n "$purge" ] && [ -n "$dbn" ] && command -v su >/dev/null; then
+            su postgres -s /bin/sh -c "psql -qc 'DROP DATABASE IF EXISTS \"$dbn\"'; psql -qc 'DROP ROLE IF EXISTS \"$dbu\"'" 2>/dev/null || warn "could not drop the database; remove it manually"
+        fi
+        rm -f "$MVAULT_MINIO_BIN"
+    elif [ -n "$purge" ]; then
+        user_stop postgres 2>/dev/null || true
+    fi
+    rm -rf "$MVAULT_PREFIX"
+    if [ -n "$purge" ]; then
+        rm -rf "$MVAULT_DATA_DIR" "$MVAULT_CONF_DIR"
+        [ "$MVAULT_MODE" = system ] && { userdel mvault 2>/dev/null || true; }
+        rm -f "$HOME/.config/mvault/layout.env"
+        say "mVault removed, including all data and configuration."
+    else
+        say "mVault program removed. Data kept in $MVAULT_DATA_DIR and configuration in $MVAULT_CONF_DIR (use --purge to delete)."
+    fi
+    # Removing the installed CLI last: it is the file being executed (bash has it open, so this is safe).
+    rm -f "$(command -v mvault 2>/dev/null || true)" 2>/dev/null || true
+}
+
+usage() {
+    cat <<'EOF'
+mvault - manage your mVault installation
+
+  mvault start|stop|restart [postgres|minio|web]   control services
+  mvault status                                     show components, health and URL
+  mvault logs [web|minio|postgres] [-f] [-n N]      show logs
+  mvault enable | disable                           start at boot (Linux/systemd only)
+  mvault config [show|path|edit|get K|set K V]      view or change mvault.env
+  mvault admin reset-password [email]               set a new temporary password
+  mvault manage <django command...>                 run manage.py (shell, check_config, ...)
+  mvault backup [--with-minio] [-o FILE]            database + configuration archive
+  mvault restore FILE [--with-config] [--yes]       restore a backup archive
+  mvault upgrade [--version X.Y.Z] [--yes]          backup, install a new release, roll back on failure
+  mvault doctor                                     check the installation
+  mvault uninstall [--purge] [--yes]                remove (keeps data unless --purge)
+  mvault version
+EOF
+}
+
+main() {
+    local cmd="${1:-help}"
+    [ $# -gt 0 ] && shift
+    case "$cmd" in
+        help | -h | --help) usage; return 0 ;;
+        version | --version | -v)
+            if LAYOUT_FILE="$(find_layout)"; then
+                load_kv "$LAYOUT_FILE"
+                say "mvault CLI $CLI_VERSION, app $(cat "$MVAULT_PREFIX/current/VERSION" 2>/dev/null || echo unknown)"
+            else
+                say "mvault CLI $CLI_VERSION (no installation found)"
+            fi
+            return 0
+            ;;
+    esac
+    need_layout
+    case "$cmd" in
+        start) do_start "${1:-}" ;;
+        stop) do_stop "${1:-}" ;;
+        restart) do_stop "${1:-}"; do_start "${1:-}" ;;
+        status) cmd_status ;;
+        logs) cmd_logs "$@" ;;
+        enable | disable) cmd_enable_disable "$cmd" ;;
+        config) cmd_config "$@" ;;
+        admin) cmd_admin "$@" ;;
+        manage) manage "$@" ;;
+        backup) cmd_backup "$@" ;;
+        restore) cmd_restore "$@" ;;
+        upgrade) cmd_upgrade "$@" ;;
+        doctor) cmd_doctor ;;
+        uninstall) cmd_uninstall "$@" ;;
+        *) usage >&2; die "unknown command: $cmd" ;;
+    esac
+}
+
+main "$@"

@@ -1,0 +1,54 @@
+[Unit]
+Description=mVault web application
+Documentation=https://github.com/orkhan/mvault
+After=network-online.target postgresql.service mvault-minio.service
+Wants=network-online.target postgresql.service mvault-minio.service
+
+[Service]
+Type=simple
+User=mvault
+Group=mvault
+Environment=PORT=8000 BIND_ADDRESS=0.0.0.0 GUNICORN_WORKERS=3 GUNICORN_TIMEOUT=120 PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=@CONF_DIR@/mvault.env
+WorkingDirectory=@PREFIX@/current
+# Wait for the database, apply migrations, make sure the first administrator exists, then serve.
+ExecStartPre=@PREFIX@/current/venv/bin/python manage.py wait_for_db
+ExecStartPre=@PREFIX@/current/venv/bin/python manage.py migrate --noinput
+ExecStartPre=@PREFIX@/current/venv/bin/python manage.py ensure_admin
+# Create the storage buckets when asked to (embedded MinIO, or MVAULT_PROVISION_BUCKETS=true); failures are not fatal.
+ExecStartPre=-/bin/sh -c '[ "$${MVAULT_PROVISION_BUCKETS:-false}" = true ] && exec @PREFIX@/current/venv/bin/python manage.py provision_storage --wait 30 || exit 0'
+ExecStart=@PREFIX@/current/venv/bin/gunicorn mvault_project.wsgi:application --bind ${BIND_ADDRESS}:${PORT} --workers ${GUNICORN_WORKERS} --timeout ${GUNICORN_TIMEOUT} --access-logfile -
+Restart=on-failure
+RestartSec=3
+TimeoutStartSec=300
+TimeoutStopSec=30
+
+# Hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=@DATA_DIR@
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectHostname=yes
+ProtectClock=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target
