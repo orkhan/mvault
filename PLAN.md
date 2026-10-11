@@ -58,13 +58,13 @@ Status legend: `[ ]` todo, `[x]` done.
 - [ ] Keep upgrade path for the maintainer's deployment (`MVAULT_ADMIN_EMAIL`, public base URLs)
 
 ### Phase 2 — Docker images (multi-arch)
-- [ ] `Dockerfile` with targets `slim` and `aio` (Debian bookworm-slim, Python 3.12, non-root app user)
-- [ ] Go build stage for MinIO (pinned tag + commit, cross-compiled per `TARGETARCH`), licenses copied to `/licenses`
-- [ ] s6-overlay services: `postgres`, `minio`, `bootstrap` (secret generation, initdb, bucket provisioning), `migrate`, `web` (gunicorn)
-- [ ] Healthcheck, graceful shutdown, `/data` volume, single exposed port 8000
-- [ ] `compose.yaml` (all-in-one), `compose.external.yaml` (existing PostgreSQL + MinIO), `compose.dev.yaml`
+- [x] `Dockerfile` with targets `slim` and `aio` (Debian bookworm-slim, Python 3.12, non-root app user)
+- [x] Go build stage for MinIO (pinned tag + commit, cross-compiled per `TARGETARCH`), licenses copied to `/licenses`
+- [x] s6-overlay services: `postgres`, `minio`, `bootstrap` (secret generation, initdb, bucket provisioning), `migrate`, `web` (gunicorn)
+- [x] Healthcheck, graceful shutdown, `/data` volume, single exposed port 8000
+- [x] `compose.yaml` (all-in-one), `compose.external.yaml` (existing PostgreSQL + MinIO), `compose.dev.yaml`
 - [ ] `scripts/provision-minio.sh` (idempotent buckets/policy/service user for people with their own MinIO)
-- [ ] Local build + smoke test on amd64 and arm64 (QEMU), size/CVE scan (trivy)
+- [ ] Smoke test on amd64 — **done on a scratch host: aio first start/restart, embedded PostgreSQL + MinIO, file/icon round trips, slim with external PostgreSQL**. Still open: arm64 build/run (CI with QEMU), size/CVE scan (trivy)
 
 ### Phase 3 — CI/CD (GitHub Actions)
 - [ ] `ci.yml`: lint (ruff), tests against PostgreSQL service, `makemigrations --check`, `pip-audit`, hadolint, shellcheck
