@@ -1,0 +1,45 @@
+name: Bug report
+description: Something does not work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! **Do not paste secrets** (encryption key/salt, passwords, `.env` contents, URLs containing passwords, vault data). Redact them. For security problems use a private advisory instead of this form.
+  - type: input
+    id: version
+    attributes:
+      label: mVault version
+      description: Footer of the app, image tag, or release.
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Install method
+      options: [Docker all-in-one, Docker slim + external services, Native Linux, Native macOS, Proxmox LXC, From source]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. …\n2. …"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and `check_config` output
+      description: Redact secrets first.
+      render: shell
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: OS/architecture, browser, reverse proxy, PostgreSQL and object-storage product/version (no secrets).

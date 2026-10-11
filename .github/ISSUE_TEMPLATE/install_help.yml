@@ -1,0 +1,39 @@
+name: Installation / configuration help
+description: You are stuck installing or configuring mVault
+labels: [question, install]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Security reminder:** never paste real secrets: encryption key/salt, `DJANGO_SECRET_KEY`, passwords, tokens, S3 secret keys, `.env` contents, or database URLs with passwords. Replace them with `REDACTED`. Read the [troubleshooting guide](https://github.com/orkhan/mvault/blob/main/docs/troubleshooting.md) first.
+  - type: dropdown
+    id: install
+    attributes:
+      label: Install method
+      options: [Docker all-in-one, Docker slim + external services, Native Linux, Native macOS, Proxmox LXC, From source]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / image tag
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Your setup
+      description: Compose file or command (secrets removed), reverse proxy, PostgreSQL and MinIO/S3 products and versions.
+      render: yaml
+  - type: textarea
+    id: problem
+    attributes:
+      label: What goes wrong?
+      description: Include the exact error and the output of `manage.py check_config` (redacted).
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (redacted)
+      render: shell
