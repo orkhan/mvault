@@ -86,13 +86,13 @@ Status legend: `[ ]` todo, `[x]` done.
 - [x] First-run bootstrap equals the container's: generated secrets (key, salt, DB/MinIO passwords), first-admin password printed once and forced to change
 - [x] `upgrade`: stop → backup (pg_dump + config) → new release → migrate → start, with rollback on failure
 - [x] Tested: macOS (Apple silicon), real systemd in Debian 12, Ubuntu 24.04 and Fedora 44 containers (install, reboot persistence, upgrade, rollback, backup/restore, re-run, uninstall/purge, checksum tamper)
-- [ ] Still untested: Raspberry Pi OS (arm64), Rocky/Alma, Intel Mac, macOS with a real Homebrew install, an unprivileged Proxmox LXC
+- [ ] Still untested: Raspberry Pi OS (arm64), Rocky/Alma, Intel Mac, macOS with a real Homebrew install, an unprivileged Proxmox LXC — tracked in [#6](https://github.com/orkhan/mvault/issues/6)
 
 ### Phase 5 — Proxmox / community-scripts
 - [x] `ct/mvault.sh` + `install/mvault-install.sh` following the community-scripts template (Debian 13 LXC, 2 vCPU / 2 GB / 8 GB defaults, unprivileged) — `proxmox/`; syntax- and shellcheck-clean
 - [x] Native install = the Phase 4 Linux layout inside the LXC (PostgreSQL from apt, venv in `/opt/mvault`, MinIO release binary, systemd units, `mvault` CLI), expressed with the community-scripts helper functions; credentials in `/root/mvault.creds`; `update_script` calls `mvault upgrade`-equivalent steps — the install script runs the release's `install.sh` inside the LXC
 - [x] Prompts honour `var_*` variables for unattended installs; options to use an existing PostgreSQL / S3 — `var_database_url`, `var_s3_*`, `var_provision_buckets`, `var_no_storage`, `var_base_url`, `var_admin_email` (+ interactive whiptail questions); flag mapping unit-tested in CI, external-DB + no-storage run end to end on real systemd
-- [ ] Test on a real Proxmox host (amd64; arm64 where possible), including update path and backup/restore — not done: needs a Proxmox host (and the real release assets)
+- [ ] Test on a real Proxmox host (amd64; arm64 where possible), including update path and backup/restore — not done: needs a Proxmox host (and the real release assets) — tracked in [#7](https://github.com/orkhan/mvault/issues/7)
 - [x] Prepare the submission (fork of community-scripts' dev repo, PR text, logo/metadata). **Do not open the PR without the maintainer's go-ahead.** Check acceptance criteria (popularity/stars, maintenance commitment) first. — `proxmox/SUBMISSION.md`; the PR itself is NOT opened (needs maintainer go-ahead)
 - [x] Until accepted: a one-liner in this repo's docs that creates the LXC with `pct` and runs `install.sh` inside it — `COMMUNITY_SCRIPTS_URL=… bash -c "$(curl …/proxmox/ct/mvault.sh)"` in `docs/proxmox.md`
 
@@ -109,7 +109,7 @@ Status legend: `[ ]` todo, `[x]` done.
 ### Phase 8 — Release and homelab switch-over
 - [x] Tag `v0.4.0`, verify the GHCR multi-arch manifest and release assets, run every install path from scratch (Docker AIO, Docker external, native Linux VM, native macOS, fresh LXC) — tag pushed; release + images verified (six version tags, amd64+arm64); aio run on amd64 and arm64, slim with external PostgreSQL, and the real `curl | sh` on a systemd Debian 12 container
 - [x] Switch the maintainer's homelab to `ghcr.io/orkhan/mvault:<ver>-slim` with the existing PostgreSQL/MinIO and `MVAULT_ADMIN_EMAIL` preserved — done 2026-10-11: `0.4.0-slim` from GHCR, backup first, admin e-mail/URL/time zone preserved; one admin, 45/45 records decrypt
-- [ ] Announce (GitHub release, r/selfhosted, awesome-selfhosted PR) once docs and CI are green
+- [ ] Announce (GitHub release, r/selfhosted, awesome-selfhosted PR) once docs and CI are green — tracked in [#8](https://github.com/orkhan/mvault/issues/8)
 
 ## Risks and decisions (resolved 2026-10-11)
 
