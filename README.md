@@ -52,7 +52,7 @@ Prefer Compose? Use [`compose.yaml`](compose.yaml): `docker compose up -d`. Back
 | **Docker all-in-one** `ghcr.io/orkhan/mvault:<version>` | Trying it out, small servers, Raspberry Pi (amd64 + arm64) | Embedded, started automatically | [Installation](docs/installation.md#1-docker-all-in-one) |
 | **Docker slim** `ghcr.io/orkhan/mvault:<version>-slim` | You already run PostgreSQL and MinIO/S3 | Yours; set `DATABASE_URL`, `S3_*` | [Installation](docs/installation.md#2-docker-slim-with-your-own-postgresql-and-minio) |
 | **Native Linux / macOS** `curl … \| sh` | No Docker: VMs, bare metal, LXC, a Mac | Installed alongside, or skipped | [Native install](docs/native-install.md) *(v0.4.0)* |
-| **Proxmox LXC** helper script | Proxmox VE hosts | Inside the container, no Docker | [Proxmox](docs/proxmox.md) *(v0.4.0)* |
+| **Proxmox LXC** helper script | Proxmox VE hosts | Inside the container, no Docker | [Proxmox](docs/proxmox.md) |
 
 The all-in-one image skips its embedded PostgreSQL when you set `DB_HOST`/`DATABASE_URL`, and its embedded MinIO when you set `S3_ENDPOINT_URL`, so you can mix and match.
 
