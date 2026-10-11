@@ -123,7 +123,7 @@ class RecordForm(forms.Form):
             raise ValueError("Record type is not allowed in this project.")
         self.type_fixed = record_type is not None
         labels = self.TYPE_LABELS_RU if language == "ru" else self.TYPE_LABELS
-        shown = [record_type] if self.type_fixed else allowed
+        shown = [record_type] if self.type_fixed else [kind for kind in allowed if kind != "file" or settings.S3_CONFIGURED]
         self.fields["record_type"].choices = [(kind, labels[kind]) for kind in shown]
         self.initial.setdefault("record_type", shown[0])
         if self.type_fixed:

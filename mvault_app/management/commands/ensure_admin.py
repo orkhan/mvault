@@ -1,11 +1,12 @@
 import os
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from mvault_app.models import User
 
 class Command(BaseCommand):
     help = "Create the initial mVault administrator when missing."
     def handle(self, *args, **options):
-        email = (os.environ.get("MVAULT_ADMIN_EMAIL") or "admin@mvault.local").strip().lower()
+        email = settings.ADMIN_EMAIL
         password = os.environ.get("MVault_ADMIN_PASSWORD") or os.environ.get("MVAULT_ADMIN_PASSWORD")
         admin = User.objects.filter(email=email).first()
         if admin:

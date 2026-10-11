@@ -172,6 +172,15 @@ class AuditEvent(models.Model):
         ordering = ["-created_at", "-id"]
 
 
+class LoginAttempt(models.Model):
+    """A failed sign-in, kept briefly to throttle repeated guessing."""
+    email = models.CharField(max_length=254)
+    ip = models.CharField(max_length=45, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        indexes = [models.Index(fields=["email", "created_at"]), models.Index(fields=["ip", "created_at"])]
+
+
 class ProjectShare(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="shares")
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name="project_shares")

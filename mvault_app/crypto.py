@@ -29,23 +29,27 @@ def _derive_key(master, salt):
     return hashlib.scrypt(master.encode(), salt=salt.encode(), n=2 ** 15, r=8, p=1, dklen=32, maxmem=128 * 1024 * 1024)
 
 
-def _aead():
-    return AESGCM(_derive_key(settings.ENCRYPTION_KEY, settings.ENCRYPTION_SALT))
+def derive_key(master, salt):
+    return _derive_key(master, salt)
+
+
+def _aead(key=None):
+    return AESGCM(key or _derive_key(settings.ENCRYPTION_KEY, settings.ENCRYPTION_SALT))
 
 
 def is_encrypted(value):
     return isinstance(value, str) and value.startswith(PREFIX)
 
 
-def encrypt_text(plaintext):
+def encrypt_text(plaintext, key=None):
     nonce = os.urandom(12)
-    sealed = _aead().encrypt(nonce, plaintext.encode("utf-8"), _CONTEXT)
+    sealed = _aead(key).encrypt(nonce, plaintext.encode("utf-8"), _CONTEXT)
     return PREFIX + base64.b64encode(nonce + sealed).decode("ascii")
 
 
-def decrypt_text(token):
+def decrypt_text(token, key=None):
     try:
         raw = base64.b64decode(token[len(PREFIX):], validate=True)
-        return _aead().decrypt(raw[:12], raw[12:], _CONTEXT).decode("utf-8")
+        return _aead(key).decrypt(raw[:12], raw[12:], _CONTEXT).decode("utf-8")
     except (InvalidTag, ValueError) as exc:
         raise DecryptionError("Stored value could not be decrypted; check the encryption key and salt.") from exc

@@ -609,7 +609,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
 from PIL import Image
 from .crypto import PREFIX, decrypt_text, encrypt_text
-from .models import Attachment
+from .models import Attachment, LoginAttempt
+from django.utils import timezone
 
 
 class FakeStorage:
@@ -987,3 +988,78 @@ class MediaProxyTests(TestCase):
     def test_configured_public_base_url_is_used_instead(self):
         from .storage import icon_public_url
         self.assertEqual(icon_public_url("projects/x.png"), "https://cdn.example.test/icons/projects/x.png")
+
+
+from django.core.management import CommandError
+from .crypto import derive_key
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"], LOGIN_MAX_ATTEMPTS=3)
+class HardeningTests(TestCase):
+    def setUp(self):
+        self.alex = User.objects.create_user("alex@example.test", "Secure-Password-2026!", "Alex Member")
+
+    def attempt(self, password, ip="203.0.113.9"):
+        return self.client.post(reverse("login"), {"username": "alex@example.test", "password": password}, HTTP_X_FORWARDED_FOR=f"1.2.3.4, {ip}")
+
+    def test_repeated_failures_lock_sign_in_until_window_passes_and_success_resets(self):
+        for _ in range(3):
+            self.assertEqual(self.attempt("wrong").status_code, 200)
+        locked = self.attempt("Secure-Password-2026!")
+        self.assertEqual(locked.status_code, 429)
+        self.assertContains(locked, "Too many failed sign-in attempts", status_code=429)
+        LoginAttempt.objects.update(created_at=timezone.now() - timezone.timedelta(hours=1))
+        self.assertEqual(self.attempt("Secure-Password-2026!").status_code, 302)
+        self.assertFalse(LoginAttempt.objects.filter(email="alex@example.test").exists())
+
+    def test_throttle_uses_the_proxy_appended_address_not_the_spoofed_one(self):
+        from .throttle import client_ip
+        request = mock.Mock(META={"HTTP_X_FORWARDED_FOR": "6.6.6.6, 198.51.100.7", "REMOTE_ADDR": "10.0.0.2"})
+        self.assertEqual(client_ip(request), "198.51.100.7")
+        with override_settings(TRUST_PROXY_HEADERS=False):
+            self.assertEqual(client_ip(request), "10.0.0.2")
+
+    def test_security_headers_are_sent(self):
+        response = self.client.get(reverse("login"))
+        csp = response["Content-Security-Policy"]
+        self.assertIn("frame-ancestors 'none'", csp)
+        self.assertIn("img-src 'self' data: https://gravatar.com", csp)
+        self.assertEqual(response["X-Frame-Options"], "DENY")
+
+    @override_settings(S3_CONFIGURED=False)
+    def test_file_records_and_uploads_are_unavailable_without_object_storage(self):
+        project = Project.objects.create(owner=self.alex, name="P", project_type="password_vault")
+        self.client.force_login(self.alex)
+        page = self.client.get(reverse("record_create", args=[project.id]))
+        self.assertContains(page, '<option value="json"')
+        self.assertNotContains(page, '<option value="file"')
+        response = self.client.post(reverse("avatar_update"), {"avatar": SimpleUploadedFile("a.png", png_bytes(), content_type="image/png")}, follow=True)
+        self.assertContains(response, "File storage is not configured")
+
+
+class RotateEncryptionKeyTests(TestCase):
+    def test_values_are_reencrypted_to_the_new_key_and_wrong_old_key_changes_nothing(self):
+        owner = User.objects.create_user("alex@example.test", "Secure-Password-2026!", "Alex")
+        project = Project.objects.create(owner=owner, name="P", project_type="password_vault")
+        record = Record.objects.create(owner=owner, project=project, record_type="password", name="Mail", data={"password": "p1"})
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT data FROM mvault_app_record WHERE id = %s", [record.pk])
+            before = cursor.fetchone()[0]
+        env = {"OLD_MVAULT_ENCRYPTION_KEY": "wrong", "OLD_MVAULT_ENCRYPTION_SALT": "wrong"}
+        with mock.patch.dict("os.environ", env), self.assertRaises(Exception):
+            call_command("rotate_encryption_key", verbosity=0)
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT data FROM mvault_app_record WHERE id = %s", [record.pk])
+            self.assertEqual(cursor.fetchone()[0], before)
+        # Simulate: data was encrypted under an old key/salt, the app now runs with new ones.
+        old = {"OLD_MVAULT_ENCRYPTION_KEY": "old-master", "OLD_MVAULT_ENCRYPTION_SALT": "old-salt"}
+        old_key = derive_key("old-master", "old-salt")
+        with connection.cursor() as cursor:
+            cursor.execute("UPDATE mvault_app_record SET data = %s WHERE id = %s", [encrypt_text('{"password":"p1"}', old_key), record.pk])
+        with mock.patch.dict("os.environ", old):
+            call_command("rotate_encryption_key", "--dry-run", verbosity=0)
+            self.assertRaises(Exception, lambda: Record.objects.get(pk=record.pk).data)
+            call_command("rotate_encryption_key", verbosity=0)
+        self.assertEqual(Record.objects.get(pk=record.pk).data, {"password": "p1"})
+        with mock.patch.dict("os.environ", {"OLD_MVAULT_ENCRYPTION_KEY": "", "OLD_MVAULT_ENCRYPTION_SALT": ""}), self.assertRaises(CommandError):
+            call_command("rotate_encryption_key", verbosity=0)

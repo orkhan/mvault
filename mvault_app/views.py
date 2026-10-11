@@ -24,7 +24,7 @@ from django.utils.text import slugify
 from django.views.decorators.http import require_http_methods, require_POST
 from .decorators import admin_required, member_required
 from .forms import LoginForm, MemberCreateForm, ProjectForm, FolderForm, RecordForm, SetTemporaryPasswordForm
-from . import storage
+from . import storage, throttle
 from .models import Attachment, AuditEvent, Folder, Project, ProjectShare, Record, RecordRevision, RecordShare, User, record_audit
 from .utils import parse_env, env_value_type, export_env, file_sha256, human_size, pretty_json, save_revision
 
@@ -100,17 +100,23 @@ def login_view(request):
         return redirect("admin_dashboard" if request.user.is_admin else "dashboard")
     form = LoginForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        user = authenticate(request, username=form.cleaned_data["username"].lower(), password=form.cleaned_data["password"])
+        email, ip = form.cleaned_data["username"].lower(), throttle.client_ip(request)
+        if throttle.is_blocked(email, ip):
+            form.add_error(None, "Too many failed sign-in attempts. Try again in a few minutes.")
+            return render(request, "mvault/login.html", {"form": form}, status=429)
+        user = authenticate(request, username=email, password=form.cleaned_data["password"])
         if user is not None:
             if not user.is_active:
                 form.add_error(None, "This account is deactivated.")
             else:
+                throttle.clear(email)
                 login(request, user)
                 AuditEvent.objects.create(actor=user, owner=user, action="login")
                 if user.must_change_password:
                     return redirect("password_change_required")
                 return redirect("admin_dashboard" if user.is_admin else "dashboard")
         else:
+            throttle.record_failure(email, ip)
             form.add_error(None, "Email or password is incorrect.")
     return render(request, "mvault/login.html", {"form": form})
 

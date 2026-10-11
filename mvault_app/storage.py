@@ -16,6 +16,15 @@ class StorageError(Exception):
     pass
 
 
+def is_configured():
+    return settings.S3_CONFIGURED
+
+
+def _require_storage():
+    if not is_configured():
+        raise StorageError("File storage is not configured on this server.")
+
+
 class _KeepOpen:
     """Read-only view of a file that ignores close(); boto3 closes the object it uploads."""
 
@@ -40,7 +49,7 @@ class S3Storage:
         self.client = boto3.client(
             "s3", endpoint_url=settings.S3_ENDPOINT_URL,
             aws_access_key_id=settings.S3_ACCESS_KEY, aws_secret_access_key=settings.S3_SECRET_KEY,
-            region_name="us-east-1", config=Config(signature_version="s3v4", s3={"addressing_style": "path"},
+            region_name=settings.S3_REGION, config=Config(signature_version="s3v4", s3={"addressing_style": "path"},
                                                   retries={"max_attempts": 3}, connect_timeout=5, read_timeout=60),
         )
 
@@ -90,6 +99,7 @@ def delete_avatar(key):
 
 
 def _save_image(kind, upload, bucket, size, label, max_bytes, square=False):
+    _require_storage()
     if upload.size > max_bytes:
         raise StorageError(f"{label} must be 2 MB or smaller.")
     try:
@@ -117,6 +127,7 @@ def _save_image(kind, upload, bucket, size, label, max_bytes, square=False):
 
 def save_attachment(upload):
     """Store an uploaded file in the private bucket; return its object key."""
+    _require_storage()
     key = f"attachments/{uuid.uuid4().hex}"
     try:
         upload.seek(0)
@@ -127,6 +138,7 @@ def save_attachment(upload):
 
 
 def copy_attachment(source_key):
+    _require_storage()
     key = f"attachments/{uuid.uuid4().hex}"
     try:
         get_storage().copy(settings.S3_ATTACHMENTS_BUCKET, source_key, key)
