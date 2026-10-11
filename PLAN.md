@@ -70,7 +70,9 @@ Status legend: `[ ]` todo, `[x]` done.
 - [ ] `ci.yml`: lint (ruff), tests against PostgreSQL service, `makemigrations --check`, `pip-audit`, hadolint, shellcheck
 - [ ] `docker.yml`: buildx multi-arch, push to GHCR on tags and `main` (`edge`), provenance + SBOM attestations, trivy scan
 - [ ] `release.yml`: on `v*` tag → GitHub release with notes; assets `mvault-<ver>-{linux,darwin}-{amd64,arm64}.tar.gz` (app + installer helpers), pinned-source MinIO binaries for the same four targets, and `SHA256SUMS` (signed with cosign/attestation) used by `install.sh` and the Proxmox installer
-- [ ] Dependabot (pip, docker, actions), CodeQL, secret scanning + push protection, branch protection on `main`
+- [x] Dependabot (pip, docker, actions), CodeQL, secret scanning + push protection
+- [x] GHCR package `ghcr.io/orkhan/mvault` public (anonymous pull verified, amd64 + arm64)
+- [ ] Branch protection on `main` (required CI checks) — **after v0.4.0 is released**, so it does not block release commits
 
 ### Phase 4 — Native installer for Linux and macOS (`curl | sh`)
 - [ ] `install.sh`: detects OS/arch/distro, verifies prerequisites, downloads the release tarball and checks it against `SHA256SUMS`; flags `--version`, `--prefix`, `--port`, `--base-url`, `--no-postgres`, `--no-minio`, `--upgrade`, `--uninstall`, `--yes`; idempotent, safe to re-run; never overwrites existing secrets
