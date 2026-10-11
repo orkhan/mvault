@@ -4,6 +4,11 @@ All notable changes to mVault are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Fixed
+- Add-record form: JSON and file fields now appear before Notes, and the subtitle no longer claims the type comes from the project.
+- JSON record view uses the full width; dashboard greeting no longer ends with an ellipsis.
+
+
 First public release is planned as **0.4.0**.
 
 ### Added

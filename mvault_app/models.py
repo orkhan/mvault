@@ -54,6 +54,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.full_name or self.email
 
     @property
+    def first_name(self):
+        return self.full_name.split()[0] if self.full_name.split() else self.email.split("@")[0]
+
+    @property
     def initials(self):
         parts = self.full_name.split()
         return "".join(p[0] for p in parts[:2]).upper() or self.email[:1].upper()

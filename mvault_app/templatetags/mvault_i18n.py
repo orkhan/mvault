@@ -206,6 +206,7 @@ def breadcrumbs(context):
     return {"items": items}
 
 RU = {
+    "Choose a record type, then fill in its details.": "Выберите тип записи и заполните данные.", "The record type cannot be changed.": "Тип записи изменить нельзя.",
     "Avatar": "Аватар", "Upload avatar": "Загрузить аватар", "Remove avatar": "Удалить аватар", "Avatar updated.": "Аватар обновлён.", "Avatar removed.": "Аватар удалён.",
     "Choose an image to upload.": "Выберите изображение для загрузки.", "Avatars must be 2 MB or smaller.": "Размер аватара не должен превышать 2 МБ.",
     "Avatars must be PNG, JPEG, WebP, or GIF images.": "Аватар должен быть изображением PNG, JPEG, WebP или GIF.",

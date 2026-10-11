@@ -76,7 +76,6 @@ class RecordForm(forms.Form):
     username = forms.CharField(max_length=240, required=False)
     password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=True))
     website = forms.URLField(required=False)
-    notes = forms.CharField(required=False, widget=forms.Textarea)
     cardholder = forms.CharField(max_length=160, required=False)
     number = forms.CharField(max_length=40, required=False)
     expiration = forms.CharField(max_length=12, required=False)
@@ -87,6 +86,7 @@ class RecordForm(forms.Form):
     value_type = forms.ChoiceField(choices=[("secret", "Secret"), ("plain", "Plain")], initial="secret", required=False)
     json_value = forms.CharField(required=False, label="JSON", widget=forms.Textarea(attrs={"spellcheck": "false", "data-json-editor": "1", "rows": 16}))
     file = forms.FileField(required=False, label="File (max 50 MB)", widget=forms.FileInput)
+    notes = forms.CharField(required=False, widget=forms.Textarea)
     PROJECT_RECORD_TYPES = {
         "password_vault": ("password", "Password"),
         "bank_cards_vault": ("bank_card", "Bank card"),

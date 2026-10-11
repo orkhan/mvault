@@ -1,11 +1,13 @@
 # Screenshots
 
-Placeholders. A later step generates screenshots from the seeded demo data (`manage.py seed_local`, no real data) and saves them here. Expected files:
+Generated from fake demo data (`manage.py seed_local` plus a few extra records) with a headless browser; no real data. Used by the main README.
 
 | File | Shows |
 |---|---|
 | `dashboard.png` | Dashboard with projects and latest activity |
-| `project-tree.png` | A project's folder/record tree |
+| `project.png` | A project with password, file and JSON records and the active sidebar item |
 | `json-editor.png` | JSON record editor with line numbers and highlighting |
-| `record-types.png` | Add-record form with the record type selector |
+| `json-record.png` | Prettified JSON record view |
+| `file-record.png` | File record with download |
 | `settings.png` | Settings: avatar, export all data |
+| `login.png`, `mobile-project.png` | Sign-in page, mobile layout |
