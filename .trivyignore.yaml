@@ -1,0 +1,25 @@
+# Accepted risk, scoped to the bundled MinIO binary only (all-in-one image). Everything else stays gated.
+#
+# MinIO is built from the pinned upstream source (Dockerfile: MINIO_TAG/MINIO_COMMIT); upstream is in
+# maintenance mode and will not bump these dependencies. In the all-in-one image MinIO listens on
+# 127.0.0.1 only, the AMQP notification target (amqp091-go) is never configured, and gRPC authz is not
+# reachable from outside the container.
+# Revisit: expires on the date below so the exception cannot be forgotten. Options then: build MinIO with
+# patched modules (go.mod replace), switch the embedded store (SeaweedFS/Garage), or drop it from AIO.
+vulnerabilities:
+  - id: CVE-2026-77405
+    paths: ["usr/local/bin/minio"]
+    statement: amqp091-go in MinIO; AMQP notifications unused, MinIO bound to localhost
+    expired_at: 2027-01-11
+  - id: CVE-2026-77408
+    paths: ["usr/local/bin/minio"]
+    statement: amqp091-go in MinIO; AMQP notifications unused, MinIO bound to localhost
+    expired_at: 2027-01-11
+  - id: CVE-2026-77411
+    paths: ["usr/local/bin/minio"]
+    statement: amqp091-go in MinIO; AMQP notifications unused, MinIO bound to localhost
+    expired_at: 2027-01-11
+  - id: CVE-2026-33186
+    paths: ["usr/local/bin/minio"]
+    statement: grpc authz in MinIO internals; not reachable, MinIO bound to localhost
+    expired_at: 2027-01-11
