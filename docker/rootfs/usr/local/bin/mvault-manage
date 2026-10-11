@@ -1,0 +1,6 @@
+#!/bin/sh
+# Run a Django management command inside the all-in-one container with the generated environment:
+#   docker exec -it mvault mvault-manage createsuperuser|check_config|changepassword <email> ...
+export PATH="/command:$PATH"
+cd /app || exit 1
+exec with-contenv s6-setuidgid mvault python manage.py "$@"

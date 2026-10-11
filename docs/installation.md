@@ -56,7 +56,7 @@ Notes:
 - Set `MVAULT_BASE_URL` to the address people will actually type. If you leave it unset the container accepts any `Host` header and logs a warning; that is only meant for a first look.
 - With plain HTTP (`http://…`) cookies are not marked `Secure`. Use HTTPS in front before real use.
 - To keep encryption keys **out** of the data volume (so volume backups are ciphertext-only), supply `MVAULT_ENCRYPTION_KEY` and `MVAULT_ENCRYPTION_SALT` yourself ([Security](security.md#keys-and-backups)).
-- Running management commands in this image needs the container environment that s6 manages; use `with-contenv` (see [Troubleshooting](troubleshooting.md#running-managepy-in-the-all-in-one-image)).
+- Running management commands in this image needs the container environment that s6 manages; use the bundled wrapper: `docker exec -it mvault mvault-manage <command>` (see [Troubleshooting](troubleshooting.md#running-managepy-in-the-all-in-one-image)).
 
 ## 2. Docker slim with your own PostgreSQL and MinIO
 

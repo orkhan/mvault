@@ -73,7 +73,7 @@ LABEL org.opencontainers.image.title="mVault" \
       org.opencontainers.image.revision="${REVISION}"
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/')"
+    CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/health/' % os.environ.get('PORT', '8000'))"
 
 # ---- slim: app only -----------------------------------------------------------------------------
 FROM app AS slim
@@ -94,7 +94,7 @@ COPY --from=minio-build /out/licenses/ /licenses/minio/
 RUN useradd --system --uid 10002 --home-dir /data/minio --shell /usr/sbin/nologin minio \
     && mkdir -p /data /run/postgresql && chown postgres:postgres /run/postgresql
 COPY docker/rootfs/ /
-RUN chmod +x /etc/s6-overlay/scripts/* /etc/s6-overlay/s6-rc.d/*/run 2>/dev/null; true
+RUN chmod +x /etc/s6-overlay/scripts/* /etc/s6-overlay/s6-rc.d/*/run /usr/local/bin/mvault-manage
 ENV S6_BEHAVIOUR_IF_STAGE2_FAILS=2 S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0 S6_KEEP_ENV=0 \
     PGBIN=/usr/lib/postgresql/15/bin
 VOLUME ["/data"]

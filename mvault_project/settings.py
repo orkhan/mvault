@@ -97,6 +97,7 @@ S3_REGION = env("S3_REGION", "us-east-1")
 S3_ICONS_BUCKET = env("S3_ICONS_BUCKET", "mvault-icons")
 S3_AVATARS_BUCKET = env("S3_AVATARS_BUCKET", "mvault-avatars")
 S3_ATTACHMENTS_BUCKET = env("S3_ATTACHMENTS_BUCKET", "mvault-attachments")
+S3_ADDRESSING_STYLE = env("S3_ADDRESSING_STYLE", "path")  # "path" (MinIO, R2, B2) or "virtual" (AWS S3)
 S3_CONFIGURED = bool(S3_ENDPOINT_URL and S3_ACCESS_KEY and S3_SECRET_KEY)
 # Optional public base URLs for the icons/avatars buckets. Empty (default): the app serves them at /media/.
 ICONS_PUBLIC_BASE_URL = env("ICONS_PUBLIC_BASE_URL").rstrip("/")

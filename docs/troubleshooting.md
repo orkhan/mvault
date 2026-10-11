@@ -4,10 +4,10 @@ First step, always: `docker logs mvault` (or your service logs), then `manage.py
 
 ## Running manage.py in the all-in-one image
 
-Secrets and generated settings live in s6's container environment, not in the plain Docker environment, so a bare `docker exec … python manage.py …` fails with *Set DJANGO_SECRET_KEY…*. Use `with-contenv` and run as the app user *(untested)*:
+Secrets and generated settings live in s6's container environment, not in the plain Docker environment, so a bare `docker exec … python manage.py …` fails with *Set DJANGO_SECRET_KEY…*. The image ships a wrapper, `mvault-manage`, that loads that environment and runs as the app user:
 
 ```bash
-docker exec -it mvault /command/with-contenv sh -c 'cd /app && /command/s6-setuidgid mvault python manage.py check_config'
+docker exec -it mvault mvault-manage check_config
 ```
 
 Replace `check_config` with any command (`rotate_encryption_key`, `changepassword you@example.com`, …). In the slim image just `docker exec -it mvault python manage.py check_config`.

@@ -50,6 +50,7 @@ Leave `S3_ENDPOINT_URL` empty to run without storage; icons, avatars and file re
 | `S3_ENDPOINT_URL` | – | ○ | Endpoint, e.g. `http://minio:9000`. |
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | – | ◐ | Credentials. Storage counts as configured only when endpoint **and** both keys are set. |
 | `S3_REGION` | `us-east-1` | ○ | Region sent to the S3 API (MinIO ignores it). |
+| `S3_ADDRESSING_STYLE` | `path` | ○ | `path` (MinIO, Cloudflare R2, Backblaze B2) or `virtual` (AWS S3). |
 | `S3_ICONS_BUCKET` | `mvault-icons` | ○ | Bucket for project/folder icons. |
 | `S3_AVATARS_BUCKET` | `mvault-avatars` | ○ | Bucket for avatars. |
 | `S3_ATTACHMENTS_BUCKET` | `mvault-attachments` | ○ | Bucket for file records (keep private). |
