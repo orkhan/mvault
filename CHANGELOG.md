@@ -21,6 +21,10 @@ First public release.
 - Icons and avatars are served by the app at `/media/…` (signed-in users), so a separate public storage host is no longer needed.
 - Documentation, `AGENTS.md`/`CLAUDE.md`, contribution and security policies, issue and pull request templates.
 
+### Security
+- The all-in-one image pins PostgreSQL 15 and refuses to start on a data directory written by a different major version instead of touching it; the dump/restore procedure is in `docs/upgrading.md`.
+- README, `SECURITY.md` and `docs/security.md` state plainly that mVault has not been independently audited.
+
 ### Changed
 - **Breaking for pre-release deployments** (see [docs/upgrading.md](docs/upgrading.md)):
   - The administrator e-mail is `MVAULT_ADMIN_EMAIL` (default `admin@mvault.local`) instead of a fixed address.
@@ -33,7 +37,7 @@ First public release.
 ### Fixed
 - Add-record form: JSON and file fields now appear before Notes, and the subtitle no longer claims the type comes from the project.
 - JSON record view uses the full width; dashboard greeting no longer ends with an ellipsis.
-- `cryptography` raised to a release without known vulnerabilities.
+- Dependency floors raised: `cryptography` (known vulnerabilities), `gunicorn` 26, `argon2-cffi`, `boto3`, `Pillow`.
 
 ## [0.3.0] - 2026-10-11
 
