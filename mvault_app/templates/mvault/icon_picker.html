@@ -1,0 +1,8 @@
+{% load mvault_i18n %}
+<fieldset class="field-wrap icon-picker">
+  <legend>{% tr field.label %}</legend>
+  <div class="icon-choice-grid">
+    {% for value, label in field.field.choices %}<label class="icon-choice" for="id_{{ field.name }}_{{ value }}"><input id="id_{{ field.name }}_{{ value }}" type="radio" name="{{ field.html_name }}" value="{{ value }}"{% if field.value == value %} checked{% endif %}{% if field.field.required %} required{% endif %}><span class="icon-choice-preview">{% icon value %}</span><span class="icon-choice-label">{% tr label %}</span></label>{% endfor %}
+  </div>
+  {% for error in field.errors %}<div class="errors">{% tr error %}</div>{% endfor %}
+</fieldset>

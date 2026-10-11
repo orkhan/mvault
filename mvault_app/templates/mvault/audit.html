@@ -1,0 +1,10 @@
+{% extends 'mvault/base.html' %}
+{% load mvault_i18n %}
+{% block title %}{% tr "Activity" %} · mVault{% endblock %}
+{% block content %}
+<div class="topline"><div><div class="eyebrow">{% tr "Audit log" %}</div><h1>{% tr "Your activity" %}</h1><p>{% tr "Actions on your vault and shared records are listed here." %}</p></div></div>
+<div class="card"><div class="list">
+  {% for event in events %}{% if event.activity_url %}<a class="list-row activity-link" href="{{ event.activity_url }}">{% include 'mvault/activity_summary.html' with event=event %}<small>{{ event.created_at|date:'M j, Y · H:i' }}</small></a>{% else %}<div class="list-row">{% include 'mvault/activity_summary.html' with event=event %}<small>{{ event.created_at|date:'M j, Y · H:i' }}</small></div>{% endif %}
+  {% empty %}<p class="muted">{% tr "No activity recorded." %}</p>{% endfor %}
+</div><div class="actions" style="justify-content:space-between;margin-top:16px">{% if has_previous %}<a class="button secondary" href="?page={{ page|add:'-1' }}">{% icon 'arrow-left' %}{% tr "Newer" %}</a>{% else %}<span></span>{% endif %}{% if has_next %}<a class="button secondary" href="?page={{ page|add:'1' }}">{% icon 'arrow-right' %}{% tr "Older" %}</a>{% endif %}</div></div>
+{% endblock %}

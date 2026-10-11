@@ -1,0 +1,2 @@
+{% load mvault_i18n %}
+{% if items %}<nav class="breadcrumbs" aria-label="Breadcrumb"><ol>{% for item in items %}<li>{% if item.url and not forloop.last %}<a href="{{ item.url }}">{% tr item.label %}</a>{% else %}<span aria-current="page">{% tr item.label %}</span>{% endif %}</li>{% endfor %}</ol></nav>{% endif %}

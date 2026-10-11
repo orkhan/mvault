@@ -1,0 +1,22 @@
+{% extends 'mvault/base.html' %}
+{% load mvault_i18n %}
+{% block title %}{{ project.name }} · mVault{% endblock %}
+{% block content %}
+<div class="topline"><div><div class="eyebrow">{% tr project.get_project_type_display %}{% if readonly %} · {% tr "Shared read-only" %}{% endif %}</div><h1 class="page-title-with-icon">{% entity_icon project %}{{ project.name }}</h1><p>{% tr "Project vault" %}</p></div><div class="actions project-page-actions{% if project.project_type != 'secret_vault' %} project-page-actions-four{% endif %}">{% if not readonly %}{% if project.project_type != 'secret_vault' %}<a class="button" href="{% url 'record_create' project.id %}">{% icon 'plus' %}{% tr "Add record" %}</a>{% endif %}<a class="button secondary" href="{% url 'folder_create' project.id %}">{% icon 'folder' %}{% tr "Add folder" %}</a><a class="button secondary" href="{% url 'share_create' 'project' project.id %}">{% icon 'share' %}{% tr "Share" %}</a><a class="button secondary" href="{% url 'project_edit' project.id %}">{% icon 'pencil' %}{% tr "Edit" %}</a>{% endif %}</div></div>
+<section class="card project-tree">
+  <h2 class="section-title">{% tr "Project contents" %}</h2>
+  {% if records %}<div class="tree-root-records"><h3>{% tr "Project records" %}</h3>{% for record in records %}{% include 'mvault/record_tree_item.html' with record=record %}{% endfor %}</div>{% endif %}
+  <div class="tree-folders">
+    {% for folder in folders %}
+      <details class="tree-folder">
+        <summary class="tree-folder-summary">{% entity_icon folder %}<span><strong>{{ folder.name }}</strong><small>{{ folder.record_count }} {% tr "records" %}</small></span><span class="tree-chevron" aria-hidden="true"><span class="tree-chevron-closed">{% icon 'chevron-right' %}</span><span class="tree-chevron-open">{% icon 'chevron-down' %}</span></span></summary>
+        <div class="tree-folder-content"><a class="tree-open-link" href="{% url 'folder_detail' folder.id %}">{% tr "Open folder" %} →</a>
+          {% if folder.active_records %}<div class="tree-records">{% for record in folder.active_records %}{% include 'mvault/record_tree_item.html' with record=record %}{% endfor %}</div>
+          {% else %}<p class="muted tree-empty">{% tr "This folder is empty." %}</p>{% endif %}
+        </div>
+      </details>
+    {% empty %}{% if not records %}<p class="muted">{% tr "No folders yet." %}</p>{% endif %}{% endfor %}
+  </div>
+  {% if not folders and records %}<p class="muted">{% tr "No folders yet." %}</p>{% endif %}
+</section>
+{% endblock %}

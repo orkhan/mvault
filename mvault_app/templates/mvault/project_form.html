@@ -1,0 +1,12 @@
+{% extends 'mvault/base.html' %}
+{% load mvault_i18n %}
+{% block title %}{% if project %}{% tr "Edit project" %}{% else %}{% tr "New project" %}{% endif %} · mVault{% endblock %}
+{% block content %}
+<div class="topline"><div><div class="eyebrow">{% tr "Vault organization" %}</div><h1 class="page-title-with-icon">{% if project %}{% entity_icon project %}{% else %}{% icon 'shield' %}{% endif %}{% if project %}{% tr "Edit project" %}{% else %}{% tr "Create a project" %}{% endif %}</h1><p>{% tr "Projects are private unless you share them." %}</p></div></div>
+<div class="card"><form method="post" enctype="multipart/form-data">{% csrf_token %}
+{% if project %}<div class="field-wrap"><span class="field-label">{% tr "Project type" %}</span><div class="type-indicator">{% tr project.get_project_type_display %}</div></div>{% endif %}
+{% for field in form %}{% if field.name == 'icon' %}{% include 'mvault/icon_picker.html' with field=field %}{% include 'mvault/icon_upload.html' with object=project %}{% elif field.name == 'icon_file' or field.name == 'remove_custom_icon' %}{% else %}<div class="field-wrap"><label for="{{ field.id_for_label }}">{% tr field.label %}</label>{{ field }}{% for error in field.errors %}<div class="errors">{% tr error %}</div>{% endfor %}</div>{% endif %}{% endfor %}
+<button type="submit">{% icon 'check' %}{% tr "Save project" %}</button></form>
+{% if project %}<div class="sep"></div><form method="post" action="{% url 'project_delete' project.id %}" onsubmit="return confirm('Delete this project and hide its records? Their history will be retained.');">{% csrf_token %}<button class="danger" type="submit">{% icon 'trash' %}{% tr "Delete project" %}</button></form>{% endif %}
+</div>
+{% endblock %}

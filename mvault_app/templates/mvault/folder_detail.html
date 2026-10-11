@@ -1,0 +1,43 @@
+{% extends 'mvault/base.html' %}
+{% load mvault_i18n %}
+{% block title %}{{ folder.name }} · mVault{% endblock %}
+{% block content %}
+
+<div class="topline">
+  <div><div class="eyebrow">{% if project.project_type == 'secret_vault' %}{% tr "Environment" %}{% else %}{% tr "Folder" %}{% endif %}{% if readonly %} · {% tr "Shared read-only" %}{% endif %}</div><h1 class="page-title-with-icon">{% entity_icon folder %}{{ folder.name }}</h1><p>{{ project.name }}</p></div>
+  <div class="actions folder-page-actions">
+    {% if not readonly %}
+      <a class="button" href="{% url 'record_create_in_folder' project.id folder.id %}">{% icon 'folder' %}{% tr "Add record" %}</a>
+      {% if project.project_type == 'secret_vault' %}<a class="button secondary" href="{% url 'env_export' folder.id %}">{% icon 'download' %}{% tr "Export .env" %}</a><button class="secondary" type="button" onclick="document.getElementById('import-env-modal').showModal()">{% icon 'upload' %}{% tr "Import .env" %}</button>{% endif %}
+      <a class="button secondary" href="{% url 'folder_edit' folder.id %}">{% icon 'pencil' %}{% tr "Edit folder" %}</a>
+    {% endif %}
+  </div>
+</div>
+<div class="card">
+  <form method="post" action="{% url 'folder_record_actions' folder.id %}" {% if not readonly %}onsubmit="return confirmBulkAction(event);"{% endif %}>
+    {% csrf_token %}
+    {% if not readonly %}<div class="folder-bulk-actions"><label class="select-all"><input type="checkbox" id="select-all-records" aria-label="{% tr 'Select all' %}"> {% tr "Select all" %}</label><div class="actions"><select class="field recipient-select" name="recipient" aria-label="{% tr 'Share with member' %}"><option value="">{% tr "Select member" %}</option>{% for recipient in recipients %}<option value="{{ recipient.id }}">{{ recipient.full_name }} · {{ recipient.email }}</option>{% endfor %}</select><button class="secondary" type="submit" name="bulk_action" value="share">{% icon 'share' %}{% tr "Share selected" %}</button><button class="danger" type="submit" name="bulk_action" value="delete">{% icon 'trash' %}{% tr "Delete selected" %}</button></div></div>{% endif %}
+    <div class="list">
+      {% for record in records %}
+        <article class="folder-record">
+          <div class="folder-record-head">
+            {% if not readonly %}<input type="checkbox" class="record-checkbox" name="record_ids" value="{{ record.id }}" aria-label="{% tr 'Select record' %} {{ record.name }}">{% endif %}
+            <a class="folder-record-title" href="{% url 'record_detail' record.id %}"><strong>{{ record.name }}</strong><small>{% tr record.get_record_type_display %}{% if record.record_type == 'variable' %} · {% tr record.data.value_type %}{% endif %}</small></a>
+            {% if not readonly %}<button class="danger" type="submit" name="single_delete" value="{{ record.id }}" onclick="return confirm('{% tr 'Delete this record? Its history will remain available.' %}');">{% icon 'trash' %}{% tr "Delete" %}</button>{% endif %}
+          </div>
+          <div class="record-field-grid">
+            {% for field in record.vault_fields %}<div class="record-field"><small>{% tr field.label %}</small><div id="value-{{ record.id }}-{{ field.key }}" class="secret-value">{% if field.masked %}*****{% else %}{{ field.value|default:'—' }}{% endif %}</div><div class="actions">{% if field.masked %}<button class="secondary compact-button" type="button" onclick="vaultAction(this,'reveal','{{ field.key }}',{{ record.id }})">{% icon 'eye' %}{% tr "Reveal" %}</button>{% endif %}{% if field.download_url %}<a class="button secondary compact-button" href="{{ field.download_url }}">{% icon 'download' %}{% tr "Download" %}</a>{% elif field.key != 'attachment' %}<button class="secondary compact-button" type="button" onclick="vaultAction(this,'copy','{{ field.key }}',{{ record.id }})">{% icon 'clipboard' %}{% tr "Copy" %}</button>{% endif %}</div></div>{% endfor %}
+          </div>
+        </article>
+      {% empty %}<p class="muted">{% tr "This folder is empty." %}</p>{% endfor %}
+    </div>
+  </form>
+</div>
+{% if project.project_type == 'secret_vault' and not readonly %}
+<dialog id="import-env-modal" class="modal-card"><div class="modal-heading"><h2 class="section-title">{% tr "Import environment variables" %}</h2><button class="secondary icon-only" type="button" aria-label="{% tr 'Close' %}" onclick="this.closest('dialog').close()">{% icon 'x' %}</button></div><p class="muted">{% tr "Existing keys are updated in place. Sensitive-looking keys default to Secret." %}</p><form method="post" enctype="multipart/form-data" action="{% url 'env_import' folder.id %}">{% csrf_token %}<div class="field-wrap"><label for="env-file">{% tr "Environment file" %}</label><input class="field" id="env-file" type="file" name="env_file" accept=".env,text/plain" required></div><div class="actions"><button type="submit">{% icon 'upload' %}{% tr "Import file" %}</button><button class="secondary" type="button" onclick="this.closest('dialog').close()">{% icon 'x' %}{% tr "Cancel" %}</button></div></form></dialog>
+{% endif %}
+<script>
+document.getElementById('select-all-records')?.addEventListener('change', event => document.querySelectorAll('.record-checkbox').forEach(box => box.checked = event.target.checked));
+function confirmBulkAction(event){const submitter=event.submitter;if(submitter?.name==='single_delete')return true;if(submitter?.value==='delete')return confirm('{% tr 'Delete selected records? Their history will remain available.' %}');if(submitter?.value==='share'&&!document.querySelector('.record-checkbox:checked')){alert('{% tr 'Select at least one record.' %}');return false}if(submitter?.value==='share'&&!document.querySelector('[name=recipient]').value){alert('{% tr 'Select a member.' %}');return false}return true}
+</script>
+{% endblock %}

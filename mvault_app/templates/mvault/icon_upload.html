@@ -1,0 +1,8 @@
+{% load mvault_i18n %}
+<div class="field-wrap icon-upload">
+  <label for="{{ form.icon_file.id_for_label }}">{% tr "Custom icon" %} <small class="muted">({% tr "optional, replaces the icon above" %})</small></label>
+  {% if object.custom_icon_key %}<div class="icon-upload-current">{% entity_icon object %}<label class="select-all"><input type="checkbox" name="remove_custom_icon" id="id_remove_custom_icon"> {% tr "Remove custom icon" %}</label></div>{% endif %}
+  {{ form.icon_file }}
+  <small class="muted">{% tr "PNG, JPEG, WebP, or GIF up to 2 MB. It is resized to 128 px." %}</small>
+  {% for error in form.icon_file.errors %}<div class="errors">{% tr error %}</div>{% endfor %}
+</div>

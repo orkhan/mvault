@@ -1,0 +1,14 @@
+{% extends 'mvault/base.html' %}
+{% load mvault_i18n %}
+{% block title %}{% if folder %}{% tr "Edit folder" %}{% else %}{% tr "New folder" %}{% endif %} · mVault{% endblock %}
+{% block content %}
+
+<div class="topline"><div><div class="eyebrow">{% if project.project_type == 'secret_vault' %}{% tr "Environment" %}{% else %}{% tr "Folder" %}{% endif %}</div><h1 class="page-title-with-icon">{% if folder %}{% entity_icon folder %}{% else %}{% icon 'folder' %}{% endif %}{% if folder %}{% tr "Edit folder" %}{% else %}{% tr "Create a folder" %}{% endif %}</h1><p>{% tr "Folders sit directly under a project." %}</p></div></div>
+<div class="card"><form method="post" enctype="multipart/form-data">{% csrf_token %}
+  <div class="field-wrap"><label for="{{ form.name.id_for_label }}">{% tr form.name.label %}</label>{{ form.name }}{% for error in form.name.errors %}<div class="errors">{% tr error %}</div>{% endfor %}</div>
+  {% include 'mvault/icon_picker.html' with field=form.icon %}
+  {% include 'mvault/icon_upload.html' with object=folder %}
+  {% if project.project_type == 'secret_vault' %}<div class="field-wrap"><label for="preset">{% tr "Common environment names" %}</label><select class="field" id="preset" onchange="if(this.value)document.getElementById('id_name').value=this.value"><option value="">{% tr "Choose a preset…" %}</option>{% for preset in presets %}<option>{{ preset }}</option>{% endfor %}</select></div>{% endif %}
+  <button type="submit">{% icon 'check' %}{% tr "Save folder" %}</button>
+</form>{% if folder %}<div class="sep"></div><form method="post" action="{% url 'folder_delete' folder.id %}" onsubmit="return confirm('Delete this folder and hide its records?');">{% csrf_token %}<button class="danger">{% icon 'trash' %}{% tr "Delete folder" %}</button></form>{% endif %}</div>
+{% endblock %}

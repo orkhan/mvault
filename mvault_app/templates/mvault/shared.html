@@ -1,0 +1,14 @@
+{% extends 'mvault/base.html' %}
+{% load mvault_i18n %}
+{% block title %}{% tr "Shared with me" %} · mVault{% endblock %}
+{% block content %}
+
+<div class="topline"><div><div class="eyebrow">{% tr "Read-only access" %}</div><h1>{% tr "Shared with me" %}</h1><p>{% tr "Live references shared by other members." %}</p></div></div>
+{% for tree in shared_trees %}
+<section class="card project-tree shared-project-tree">
+  <div class="shared-tree-heading"><div>{% if tree.access == 'Shared project' %}<a href="{% url 'project_detail' tree.project.id %}"><h2 class="section-title page-title-with-icon">{% entity_icon tree.project %}{{ tree.project.name }}</h2></a>{% else %}<h2 class="section-title page-title-with-icon">{% entity_icon tree.project %}{{ tree.project.name }}</h2>{% endif %}<p class="muted">{% tr tree.project.get_project_type_display %} · {% tr "Shared by" %} {{ tree.owner.full_name }}</p></div><span class="pill">{% tr tree.access %}</span></div>
+  {% if tree.records %}<div class="tree-root-records"><h3>{% if tree.access == 'Shared records' %}{% tr "Shared records" %}{% else %}{% tr "Project records" %}{% endif %}</h3>{% for record in tree.records %}{% include 'mvault/record_tree_item.html' with record=record %}{% endfor %}</div>{% endif %}
+  <div class="tree-folders">{% for folder_entry in tree.folders %}<details class="tree-folder"><summary class="tree-folder-summary">{% entity_icon folder_entry.folder %}<span><strong>{{ folder_entry.folder.name }}</strong><small>{{ folder_entry.record_count }} {% tr "records" %}</small></span><span class="tree-chevron" aria-hidden="true"><span class="tree-chevron-closed">{% icon 'chevron-right' %}</span><span class="tree-chevron-open">{% icon 'chevron-down' %}</span></span></summary><div class="tree-folder-content">{% if tree.access == 'Shared project' %}<a class="tree-open-link" href="{% url 'folder_detail' folder_entry.folder.id %}">{% tr "Open folder" %} →</a>{% endif %}{% if folder_entry.active_records %}<div class="tree-records">{% for record in folder_entry.active_records %}{% include 'mvault/record_tree_item.html' with record=record %}{% endfor %}</div>{% else %}<p class="muted tree-empty">{% tr "This folder is empty." %}</p>{% endif %}</div></details>{% empty %}{% if not tree.records %}<p class="muted">{% tr "No shared contents." %}</p>{% endif %}{% endfor %}</div>
+</section>
+{% empty %}<section class="card"><p class="muted">{% tr "No shared items yet." %}</p></section>{% endfor %}
+{% endblock %}
