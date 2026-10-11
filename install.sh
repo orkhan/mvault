@@ -54,6 +54,11 @@ Environment: MVAULT_RELEASE_BASE (directory or URL holding the release assets, f
 EOF
 }
 
+os_ids() { # "debian ubuntu"-style identifiers; read in a subshell because os-release defines VERSION, NAME, ID...
+    # shellcheck disable=SC1091
+    ( . /etc/os-release 2>/dev/null && printf '%s %s' "${ID:-}" "${ID_LIKE:-}" )
+}
+
 rand_hex() { head -c "$1" /dev/urandom | od -An -tx1 | tr -d ' \n'; }
 
 ask() { # ask <prompt> -> reads from the terminal even when the script itself is piped
@@ -228,6 +233,21 @@ ENV_FILE="$CONF_DIR/mvault.env"
 MINIO_ENV_FILE="$CONF_DIR/minio.env"
 LAYOUT_FILE="$CONF_DIR/layout.env" # canonical copy; on macOS a pointer copy in ~/.config makes custom prefixes discoverable
 
+# Validate what a fresh install needs before anything is downloaded or changed.
+if [ ! -f "$ENV_FILE" ]; then
+    if [ "$WITH_POSTGRES" = 0 ] && [ -z "$DATABASE_URL_ARG" ]; then
+        if ask "PostgreSQL URL (postgres://user:password@host:5432/dbname):"; then DATABASE_URL_ARG="$ANSWER"; fi
+        [ -n "$DATABASE_URL_ARG" ] || die "with --no-postgres you must pass --database-url postgres://user:password@host:5432/dbname"
+    fi
+    if [ "$WITH_STORAGE" = 1 ] && [ "$WITH_MINIO" = 0 ]; then
+        if [ -z "$S3_ENDPOINT_ARG" ] && ask "S3 endpoint URL (e.g. http://minio.lan:9000):"; then S3_ENDPOINT_ARG="$ANSWER"; fi
+        if [ -n "$S3_ENDPOINT_ARG" ] && [ -z "$S3_KEY_ARG" ] && ask "S3 access key:"; then S3_KEY_ARG="$ANSWER"; fi
+        if [ -n "$S3_ENDPOINT_ARG" ] && [ -z "$S3_SECRET_ARG" ] && ask "S3 secret key:"; then S3_SECRET_ARG="$ANSWER"; fi
+        [ -n "$S3_ENDPOINT_ARG" ] && [ -n "$S3_KEY_ARG" ] && [ -n "$S3_SECRET_ARG" ] \
+            || die "with --no-minio pass --s3-endpoint, --s3-access-key and --s3-secret-key, or use --no-storage"
+    fi
+fi
+
 # --- release lookup ----------------------------------------------------------------------------------------
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT INT TERM
@@ -239,7 +259,7 @@ if [ -z "$VERSION" ]; then
     else
         have curl || have wget || die "curl or wget is required"
         log "Looking up the latest release"
-        fetch "https://api.github.com/repos/$REPO/releases/latest" "$TMP/latest.json" || die "could not query GitHub for the latest release"
+        fetch "https://api.github.com/repos/$REPO/releases/latest" "$TMP/latest.json" || die "could not query GitHub for the latest release (no release published yet, or no network access); try --version X.Y.Z"
         VERSION="$(sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' "$TMP/latest.json" | head -n 1)"
         [ -n "$VERSION" ] || die "could not determine the latest release version"
     fi
@@ -378,10 +398,7 @@ if [ "$WITH_POSTGRES" = 1 ]; then
         PG_MODE=system
         if ! have psql || ! { have pg_isready || [ -d /usr/lib/postgresql ] || [ -d /var/lib/pgsql ]; }; then
             log "Installing PostgreSQL from the distribution packages"
-            # Read os-release in a subshell: it defines VERSION, NAME, ID... which must not clobber ours.
-            # shellcheck disable=SC1091
-            os_ids="$(. /etc/os-release 2>/dev/null && printf '%s %s' "${ID:-}" "${ID_LIKE:-}")"
-            case " $os_ids " in
+            case " $(os_ids) " in
                 *debian* | *ubuntu*)
                     export DEBIAN_FRONTEND=noninteractive
                     apt-get update -qq
@@ -394,7 +411,7 @@ if [ "$WITH_POSTGRES" = 1 ]; then
                         if have postgresql-setup; then postgresql-setup --initdb; else as_postgres initdb -D /var/lib/pgsql/data; fi
                     fi
                     ;;
-                *) die "automatic PostgreSQL installation is not supported on '${os_ids:-unknown}'. Install PostgreSQL yourself and re-run with --database-url, or use --no-postgres." ;;
+                *) die "automatic PostgreSQL installation is not supported on '$(os_ids)'. Install PostgreSQL yourself and re-run with --database-url, or use --no-postgres." ;;
             esac
         fi
         if [ -d /run/systemd/system ] && { [ "$SYSTEMD" = 1 ] || [ "$START" = 1 ]; }; then
@@ -460,11 +477,20 @@ if [ "$WITH_POSTGRES" = 1 ]; then
     fi
 else
     PG_MODE=external
+    if [ "$MODE" = system ] && ! have pg_dump; then # client tools only: `mvault backup` and `restore` need pg_dump/pg_restore
+        log "Installing the PostgreSQL client tools (for backups)"
+        case " $(os_ids) " in
+            *debian* | *ubuntu*)
+                export DEBIAN_FRONTEND=noninteractive
+                if apt-get update -qq && apt-get install -y -qq postgresql-client >/dev/null; then :; else warn "could not install postgresql-client; install it for 'mvault backup'"; fi
+                ;;
+            *rhel* | *fedora* | *centos* | *rocky* | *almalinux*)
+                pkg=dnf; have dnf || pkg=yum
+                if "$pkg" install -y -q postgresql >/dev/null; then :; else warn "could not install the PostgreSQL client; install it for 'mvault backup'"; fi
+                ;;
+        esac
+    fi
     if [ "$FIRST_INSTALL" = 1 ]; then
-        if [ -z "$DATABASE_URL_ARG" ]; then
-            ask "PostgreSQL URL (postgres://user:password@host:5432/dbname):" && DATABASE_URL_ARG="$ANSWER" || true
-        fi
-        [ -n "$DATABASE_URL_ARG" ] || die "with --no-postgres you must pass --database-url postgres://user:password@host:5432/dbname"
         kv_put "$ENV_FILE" DATABASE_URL "$DATABASE_URL_ARG"
     fi
 fi
@@ -496,9 +522,6 @@ if [ "$WITH_STORAGE" = 1 ] && [ "$WITH_MINIO" = 1 ]; then
 elif [ "$WITH_STORAGE" = 1 ]; then
     MINIO_MODE=external
     if [ "$FIRST_INSTALL" = 1 ]; then
-        if [ -z "$S3_ENDPOINT_ARG" ]; then ask "S3 endpoint URL (e.g. http://minio.lan:9000):" && S3_ENDPOINT_ARG="$ANSWER" || true; fi
-        [ -n "$S3_ENDPOINT_ARG" ] && [ -n "$S3_KEY_ARG" ] && [ -n "$S3_SECRET_ARG" ] \
-            || die "with --no-minio pass --s3-endpoint, --s3-access-key and --s3-secret-key, or use --no-storage"
         kv_put "$ENV_FILE" S3_ENDPOINT_URL "$S3_ENDPOINT_ARG"
         kv_put "$ENV_FILE" S3_ACCESS_KEY "$S3_KEY_ARG"
         kv_put "$ENV_FILE" S3_SECRET_KEY "$S3_SECRET_ARG"
