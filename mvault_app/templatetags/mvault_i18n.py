@@ -1,3 +1,4 @@
+import re
 from django import template
 from django.urls import reverse
 from django.utils.html import format_html
@@ -72,6 +73,8 @@ def breadcrumbs(context):
     request = context.get("request")
     if request is None:
         return {"items": []}
+    # The inclusion template gets only the returned dict, and ``tr`` needs the request to know the language.
+    items_context = {"request": request}
 
     view = getattr(request.resolver_match, "url_name", "")
     user = request.user
@@ -85,7 +88,7 @@ def breadcrumbs(context):
 
     if not user.is_authenticated:
         add("Sign in")
-        return {"items": items}
+        return {"items": items, **items_context}
 
     if user.is_admin and view in {"admin_dashboard", "member_create", "member_password", "member_delete"}:
         if view == "admin_dashboard":
@@ -100,15 +103,15 @@ def breadcrumbs(context):
                 "member_password": "Reset password",
                 "member_delete": "Delete member",
             }[view])
-        return {"items": items}
+        return {"items": items, **items_context}
 
     if view == "dashboard":
         add("Dashboard")
-        return {"items": items}
+        return {"items": items, **items_context}
 
     if view == "password_change_required":
         add("Choose a new password")
-        return {"items": items}
+        return {"items": items, **items_context}
 
     project = context.get("project")
     folder = context.get("folder")
@@ -142,7 +145,7 @@ def breadcrumbs(context):
                 if folder is not None:
                     add(folder.name, reverse("folder_detail", args=[folder.pk]))
             add(record.name)
-        return {"items": items}
+        return {"items": items, **items_context}
 
     dashboard_link()
 
@@ -204,7 +207,7 @@ def breadcrumbs(context):
         elif view == "share_create":
             add("Share")
 
-    return {"items": items}
+    return {"items": items, **items_context}
 
 RU = {
     "Choose a record type, then fill in its details.": "Выберите тип записи и заполните данные.", "The record type cannot be changed.": "Тип записи изменить нельзя.",
@@ -612,26 +615,84 @@ RU = {
     'Home': 'Дом',
     'Cloud': 'Облако',
     'Bolt': 'Молния',
+    "Breadcrumb": "Навигационная цепочка",
+    "Delete {name}?": "Удалить {name}?",
+    "For {name}": "Для {name}",
+    "Temporary password set. The member must change it at next sign-in.": "Временный пароль установлен. Участник должен сменить его при следующем входе.",
+    "Account permanently deleted.": "Учётная запись окончательно удалена.",
+    "Too many failed sign-in attempts. Try again in a few minutes.": "Слишком много неудачных попыток входа. Повторите через несколько минут.",
+    "This record type is not available in this project.": "Этот тип записи недоступен в данном проекте.",
+    "Choose a .env file smaller than 1 MB.": "Выберите файл .env размером меньше 1 МБ.",
+    "Created account for {name}. They must change the assigned password at first login.": "Создана учётная запись для {name}. При первом входе нужно сменить назначенный пароль.",
+    "{name} is active.": "{name}: учётная запись активна.",
+    "{name} is deactivated.": "{name}: учётная запись деактивирована.",
+    "Deleted {count} record(s).": "Удалено записей: {count}.",
+    "Shared {count} record(s) with {name}.": "Записей предоставлено: {count}, получатель: {name}.",
+    "Shared with {name}.": "Доступ предоставлен: {name}.",
+    "Copied into {name}.": "Скопировано в {name}.",
+    "Imported {count} variables.": "Импортировано переменных: {count}.",
+    "Could not import file: {detail}": "Не удалось импортировать файл: {detail}",
+    "Could not import {key}: a non-variable record already uses that name.": "Не удалось импортировать {key}: имя уже занято записью другого типа.",
+    "An account with this email already exists.": "Учётная запись с таким адресом электронной почты уже существует.",
+    "Record type cannot be changed.": "Тип записи изменить нельзя.",
+    "Invalid JSON: {detail}": "Некорректный JSON: {detail}",
+    "File storage is not configured on this server.": "Хранилище файлов на этом сервере не настроено.",
+    "Could not store the image. Try again later.": "Не удалось сохранить изображение. Повторите попытку позже.",
+    "Could not store the file. Try again later.": "Не удалось сохранить файл. Повторите попытку позже.",
+    "Could not copy the file. Try again later.": "Не удалось скопировать файл. Повторите попытку позже.",
+    "Users": "Пользователи",
+    "Clock": "Часы",
+    "Line {n}: expected KEY=value": "Строка {n}: ожидается KEY=value",
+    "Line {n}: invalid variable name": "Строка {n}: недопустимое имя переменной",
     "Close menu": "Закрыть меню", "Open record": "Открыть запись", "Open menu": "Открыть меню", "Menu": "Меню",
 }
 
-def translate(language, value):
-    """English text -> text in ``language``; falls back to English when there is no entry."""
+_PLACEHOLDER = re.compile(r"\{(\w+)\}")
+_patterns = {}
+
+
+def _table_patterns(language, table):
+    """Entries with ``{name}`` placeholders, compiled once, so messages built with f-strings still translate."""
+    if language not in _patterns:
+        compiled = []
+        for key, value in table.items():
+            if "{" in key:
+                regex = "".join(f"(?P<{part}>.+?)" if i % 2 else re.escape(part) for i, part in enumerate(_PLACEHOLDER.split(key)))
+                compiled.append((re.compile(f"^{regex}$", re.S), value))
+        _patterns[language] = compiled
+    return _patterns[language]
+
+
+def translate(language, value, **params):
+    """English text -> text in ``language``; falls back to English when there is no entry.
+
+    Keys may contain ``{name}`` placeholders: filled from ``params`` or, for an already formatted message
+    (``Deleted 3 record(s).``), from the text matched against the key.
+    """
     text = str(value)
     table = RU if language == "ru" else TABLES.get(language)
-    if not table:
-        return text
-    translated = table.get(text)
-    if translated is not None:
-        return translated
-    # Audit action identifiers and display strings can be generated dynamically.
-    return table.get(text.replace("_", " ").title(), text)
+    if table:
+        translated = table.get(text)
+        if translated is None:
+            for regex, candidate in _table_patterns(language, table):
+                match = regex.match(text)
+                if match:
+                    translated, params = candidate, {**match.groupdict(), **params}
+                    if "detail" in params:  # nested message, e.g. the parser error inside "Could not import file: …"
+                        params["detail"] = translate(language, params["detail"])
+                    break
+        if translated is None:
+            # Audit action identifiers and display strings can be generated dynamically.
+            translated = table.get(text.replace("_", " ").title())
+        if translated is not None:
+            text = translated
+    return text.format(**params) if params else text
 
 
 @register.simple_tag(takes_context=True)
-def tr(context, value):
+def tr(context, value, **params):
     request = context.get("request")
-    return translate(getattr(getattr(request, "user", None), "preferred_language", "en"), value)
+    return translate(getattr(getattr(request, "user", None), "preferred_language", "en"), value, **params)
 
 
 @register.simple_tag(takes_context=True)

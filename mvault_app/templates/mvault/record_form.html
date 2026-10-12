@@ -34,7 +34,7 @@ const layer=document.createElement('pre');layer.className='json-hl';layer.setAtt
 area.parentNode.insertBefore(editor,area);editor.append(gutter,stack);stack.append(layer,area);area.wrap='off';area.spellcheck=false;
 const paint=()=>{const text=area.value;const lines=text.split('\n').length;gutter.textContent=Array.from({length:lines},(_,i)=>i+1).join('\n');layer.innerHTML=window.mvaultHighlightJson(text)+'\n'};
 const check=()=>{const text=area.value.trim();paint();if(!text){status.textContent='';status.className='json-status';return null}
-try{const parsed=JSON.parse(text);status.textContent='✓ Valid JSON';status.className='json-status ok';return parsed}catch(e){status.textContent=e.message;status.className='json-status bad';return undefined}};
+try{const parsed=JSON.parse(text);status.textContent='✓ {% tr "Valid JSON" %}';status.className='json-status ok';return parsed}catch(e){status.textContent=e.message;status.className='json-status bad';return undefined}};
 const rewrite=indent=>{const parsed=check();if(parsed===undefined||parsed===null)return;area.value=JSON.stringify(parsed,null,indent);check()};
 document.querySelector('[data-json-format]').addEventListener('click',()=>rewrite(2));
 document.querySelector('[data-json-minify]').addEventListener('click',()=>rewrite(0));

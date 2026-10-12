@@ -106,7 +106,7 @@ MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024
 MAX_ICON_BYTES = 2 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
-APP_VERSION = "0.5.0"
+APP_VERSION = "0.5.1"
 
 # --- Accounts ---------------------------------------------------------------------------------------
 ADMIN_EMAIL = (env("MVAULT_ADMIN_EMAIL") or "admin@mvault.local").strip().lower()

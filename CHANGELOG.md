@@ -4,6 +4,16 @@ All notable changes to mVault are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-12
+
+### Fixed
+- Breadcrumbs were never translated (the include lost the request, so `{% tr %}` fell back to English) in every language, Russian included.
+- Untranslated UI text found by an audit of templates, views, forms, storage errors and inline scripts: page titles (history, share, reset password, delete member), "Delete {name}?" and "For {name}" headings, project type on the dashboard, "Former member", the admin dashboard activity list (showed raw action names), the CVV/PIN field labels, the "Valid JSON" status, the Users/Clock icon names and the sign-in throttling and other login errors.
+- Flash messages built from variables (for example "Deleted 3 record(s).", "Shared with …", "Copied into …", "Imported … variables.") are now translated through `{name}`-style patterns; storage, import-parser and form validation errors too.
+
+### Added
+- `{% tr "Text {name}" name=value %}` and pattern keys in the translation tables; tests check that every template string, message, activity label and icon name exists in all seven languages.
+
 ## [0.5.0] - 2026-10-12
 
 ### Changed
@@ -83,7 +93,8 @@ First public release.
 ### Added
 - Initial release: admin-managed member accounts with Argon2id password hashes; projects with fixed types (passwords, bank cards, secrets), folders and records; masked values with audited reveal/copy; record history; activity log; read-only project and record sharing with copy-to-vault; `.env` import/export for secret projects; English and Russian interface.
 
-[Unreleased]: https://github.com/orkhan/mvault/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/orkhan/mvault/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/orkhan/mvault/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/orkhan/mvault/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/orkhan/mvault/releases/tag/v0.4.0
 [0.3.0]: https://github.com/orkhan/mvault/commit/32b0578

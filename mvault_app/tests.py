@@ -148,6 +148,52 @@ class MvaultWorkflowTests(TestCase):
         self.alex.refresh_from_db()
         self.assertEqual(self.alex.preferred_language, "en")
 
+    def test_templates_and_messages_have_translations_in_every_language(self):
+        import glob
+        import os
+        import re
+        from .locales import TABLES
+        from .templatetags.mvault_i18n import RU, translate
+        tables = {"ru": RU, **TABLES}
+        root = os.path.dirname(__file__)
+        used = set()
+        for path in glob.glob(os.path.join(root, "templates", "mvault", "*.html")):
+            used |= {a or b for a, b in re.findall(r"""\{% tr (?:"([^"]+)"|'([^']+)')""", open(path).read())}
+        views = open(os.path.join(root, "views.py")).read()
+        used |= set(re.findall(r'messages\.(?:success|error)\(request, "([^"{]+)"\)', views))
+        used |= set(re.findall(r'add_error\([^,]+, "([^"{]+)"\)', views + open(os.path.join(root, "forms.py")).read()))
+        from .models import VAULT_ICON_CHOICES
+        from .templatetags.mvault_i18n import ACTIVITY_LABELS
+        source = open(os.path.join(root, "templatetags", "mvault_i18n.py")).read()
+        used |= set(ACTIVITY_LABELS.values()) | {label for _, label in VAULT_ICON_CHOICES} | {label for _, label in Project.TYPES} | {label for _, label in Record.TYPES}
+        used |= set(re.findall(r'add\("([^"]+)"', source)) | set(re.findall(r'"(?:member_create|member_password|member_delete)": "([^"]+)"', source))
+        used |= set(re.findall(r'"label": "([^"]+)"', views))
+        for code, table in tables.items():
+            self.assertEqual([], sorted(key for key in used if key not in table), code)
+        samples = {
+            "Deleted 3 record(s).": "Deleted {count} record(s).", "Bob is active.": "{name} is active.",
+            "Shared 2 record(s) with Bob Example.": "Shared {count} record(s) with {name}.", "Copied into Cards.": "Copied into {name}.",
+            "Imported 4 variables.": "Imported {count} variables.", "Could not import file: Line 2: expected KEY=value": "Could not import file: {detail}",
+            "Created account for Bob. They must change the assigned password at first login.": "Created account for {name}. They must change the assigned password at first login.",
+        }
+        for code in tables:
+            for message in samples:
+                self.assertNotEqual(translate(code, message), message, (code, message))
+        self.assertIn("Bob Example", translate("uk", "Shared 2 record(s) with Bob Example."))
+        self.assertNotIn("{", translate("tr", "Could not import file: Line 2: expected KEY=value"))
+
+    def test_breadcrumbs_and_titles_are_translated(self):
+        from .locales import TABLES
+        self.client.force_login(self.alex)
+        for code, table in TABLES.items():
+            self.alex.preferred_language = code
+            self.alex.save(update_fields=["preferred_language"])
+            html = self.client.get(reverse("record_edit", args=[self.record.id])).content.decode()
+            crumbs = html[html.index('<nav class="breadcrumbs"'):html.index("</nav>", html.index('<nav class="breadcrumbs"'))]
+            self.assertIn(table["Dashboard"], crumbs, code)
+            self.assertIn(table["Edit record"], crumbs, code)
+            self.assertNotIn(">Dashboard<", crumbs, code)
+
     def test_russian_record_form_localizes_field_choices(self):
         self.alex.preferred_language = "ru"
         self.alex.save(update_fields=["preferred_language"])
@@ -859,7 +905,7 @@ class ExportAllTests(TestCase):
     def test_export_button_on_settings_and_version(self):
         page = self.client.get(reverse("settings"))
         self.assertContains(page, reverse("export_all"))
-        self.assertContains(page, "version 0.5.0")
+        self.assertContains(page, "version 0.5.1")
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
