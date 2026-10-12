@@ -31,7 +31,7 @@ class PasswordChangeRequiredMiddleware:
         user = request.user
         if user.is_authenticated and user.must_change_password:
             allowed = {reverse("password_change_required"), reverse("logout"), reverse("health")}
-            if request.path not in allowed and not request.path.startswith("/static/"):
+            if request.path not in allowed and not request.path.startswith(("/static/", "/brand/")) and request.path != "/favicon.ico":
                 return redirect("password_change_required")
         return self.get_response(request)
 

@@ -177,6 +177,13 @@ class MvaultWorkflowTests(TestCase):
         with self.assertRaises(ValueError):
             RecordForm(project_type="password_vault", record_type="bank_card")
 
+    def test_brand_assets_are_public_and_whitelisted(self):
+        for path, kind in (("/favicon.ico", "image/x-icon"), ("/brand/favicon.svg", "image/svg+xml"), ("/brand/mvault-logo.svg", "image/svg+xml")):
+            response = self.client.get(path)
+            self.assertEqual((response.status_code, response["Content-Type"]), (200, kind))
+        self.assertEqual(self.client.get("/brand/uikit.css").status_code, 404)
+        self.assertEqual(self.client.get("/brand/..%2Fviews.py").status_code, 404)
+
     def test_bank_card_field_validation(self):
         def errors(**data):
             form = RecordForm({"record_type": "bank_card", "name": "c", **data}, project_type="bank_cards_vault", record_type="bank_card", initial={"record_type": "bank_card"})
@@ -321,7 +328,7 @@ class MvaultWorkflowTests(TestCase):
         self.assertContains(page, 'href="#mv-icon-chevron-down"')
         self.assertContains(page, ".tree-folder-summary>span:nth-child(2),.tree-record>span:nth-child(2){flex:1;min-width:0}")
         self.assertContains(page, ".tree-record-entry[open]>.tree-record .tree-chevron .tree-chevron-open")
-        self.assertContains(page, ".tree-record-entry[open]{margin:0 0 8px 10px;padding-left:10px;border-left:2px solid #40514f}")
+        self.assertContains(page, ".tree-record-entry[open]{margin:0 0 8px 10px;padding-left:10px;border-left:2px solid var(--border-strong)}")
         self.assertNotContains(page, "record.open=")
         self.assertContains(page, "Work")
         self.assertContains(page, "Folder record")
@@ -852,7 +859,7 @@ class ExportAllTests(TestCase):
     def test_export_button_on_settings_and_version(self):
         page = self.client.get(reverse("settings"))
         self.assertContains(page, reverse("export_all"))
-        self.assertContains(page, "version 0.4.0")
+        self.assertContains(page, "version 0.5.0")
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])

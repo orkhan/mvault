@@ -4,6 +4,13 @@ All notable changes to mVault are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-12
+
+### Changed
+- New brand: logo in the sidebar and sign-in page, favicon, Apple touch icon and web manifest (served from `/brand/…` and `/favicon.ico`).
+- New colour palette (Night neutrals with a Vault Brass accent) applied across the interface; the design tokens are in `docs/design/uikit.css`.
+- README screenshots regenerated with the new theme.
+
 ### Added
 - Interface languages: Azerbaijani, Turkish, Spanish (Spain), Belarusian and Ukrainian, selectable in Settings. Translations live in `mvault_app/locales/`; the machine-assisted texts would benefit from native-speaker review.
 - Record form: reveal/hide (eye) button for the Password and CVV inputs; bank card number (12–19 digits, Luhn), expiry (MM/YY), CVV (3 digits, 4 for Amex) and PIN (4–12 digits) are validated in the browser and on the server.
@@ -76,7 +83,8 @@ First public release.
 ### Added
 - Initial release: admin-managed member accounts with Argon2id password hashes; projects with fixed types (passwords, bank cards, secrets), folders and records; masked values with audited reveal/copy; record history; activity log; read-only project and record sharing with copy-to-vault; `.env` import/export for secret projects; English and Russian interface.
 
-[Unreleased]: https://github.com/orkhan/mvault/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/orkhan/mvault/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/orkhan/mvault/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/orkhan/mvault/releases/tag/v0.4.0
 [0.3.0]: https://github.com/orkhan/mvault/commit/32b0578
 

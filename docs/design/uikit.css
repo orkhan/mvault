@@ -1,0 +1,73 @@
+/* mVault UI kit — color tokens (dark mode only)
+   Derived from the Option I logo: Vault Brass + Night slate. */
+:root {
+  color-scheme: dark;
+
+  /* ── Primitives: Night (neutrals) ─────────────────────── */
+  --night-950: #0B0D0F;
+  --night-900: #101316;
+  --night-850: #15191C;
+  --night-800: #1E2327;
+  --night-750: #252B30;
+  --night-700: #2A3136;
+  --night-600: #3A434A;
+  --night-500: #5B666E;
+  --night-400: #8A949C;
+  --night-300: #B4BDC4;
+  --frost-100: #E8ECEF;
+
+  /* ── Primitives: Brass (brand accent) ─────────────────── */
+  --brass-100: #FDEBC4;
+  --brass-200: #F9D78A;
+  --brass-300: #F6C664;
+  --brass-400: #F2B544; /* brand */
+  --brass-500: #DB9A26;
+  --brass-600: #B37A17;
+  --brass-700: #85590F;
+  --brass-800: #573A0A;
+  --brass-900: #2E2008;
+
+  /* ── Surfaces ─────────────────────────────────────────── */
+  --bg-app:      var(--night-900);
+  --bg-sidebar:  var(--night-850);
+  --bg-input:    var(--night-900);
+  --bg-card:     var(--night-800);
+  --bg-raised:   var(--night-750);   /* hover, menus, popovers */
+  --bg-scrim:    rgb(11 13 15 / 0.72);
+  --bg-selected: var(--brass-900);   /* selected row / nav item */
+
+  /* ── Borders ──────────────────────────────────────────── */
+  --border:        var(--night-700);
+  --border-strong: var(--night-600);
+  --border-selected: var(--brass-700);
+
+  /* ── Text ─────────────────────────────────────────────── */
+  --text:           var(--frost-100); /* 13.3:1 on card */
+  --text-secondary: var(--night-300); /*  8.3:1 on card */
+  --text-muted:     var(--night-400); /*  5.1:1 on card */
+  --text-disabled:  var(--night-500);
+  --text-on-brass:  var(--night-850); /*  9.7:1 on brass-400 */
+  --text-link:      var(--brass-400);
+  --text-link-hover: var(--brass-200);
+  --secret-mask:    var(--night-500); /* •••• masked values */
+
+  /* ── Primary action ───────────────────────────────────── */
+  --primary:         var(--brass-400);
+  --primary-hover:   var(--brass-300);
+  --primary-pressed: var(--brass-500);
+  --focus-ring:      0 0 0 3px rgb(242 181 68 / 0.25);
+  --focus-border:    var(--brass-400);
+
+  /* ── Status (fg / bg / border) ────────────────────────── */
+  --success: #4FD1A5; --success-bg: #0F2A22; --success-border: #1C4A3C;
+  --danger:  #F26B6B; --danger-bg:  #2E1517; --danger-border:  #5C2A2E;
+  --warning: #F28C4A; --warning-bg: #2E1C10; --warning-border: #5C3820;
+  --info:    #6EA8FE; --info-bg:    #14233A; --info-border:    #244068;
+
+  /* ── Record types (badges, icons) ─────────────────────── */
+  --type-password: #7AA7FF; --type-password-bg: #16233D;
+  --type-card:     #C792EA; --type-card-bg:     #2A1D36;
+  --type-env:      #4FD1A5; --type-env-bg:      #0F2A22;
+  --type-json:     #F28C4A; --type-json-bg:     #2E1C10;
+  --type-file:     #B4BDC4; --type-file-bg:     #252B30;
+}

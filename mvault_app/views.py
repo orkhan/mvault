@@ -88,6 +88,23 @@ def purge_record_files(record_ids):
     Attachment.objects.filter(pk__in=[a.pk for a in attachments if a.object_key not in failed]).delete()
 
 
+BRAND_DIR = os.path.join(os.path.dirname(__file__), "brand")
+BRAND_FILES = {
+    "favicon.ico": "image/x-icon", "favicon.svg": "image/svg+xml", "apple-touch-icon.png": "image/png",
+    "icon-192.png": "image/png", "icon-512.png": "image/png", "mvault-logo.svg": "image/svg+xml",
+    "mvault-mark.svg": "image/svg+xml", "site.webmanifest": "application/manifest+json",
+}
+
+
+def brand_asset(request, name):
+    """Logo and favicon files bundled with the app; public so the sign-in page can show them."""
+    if name not in BRAND_FILES:
+        raise Http404
+    response = FileResponse(open(os.path.join(BRAND_DIR, name), "rb"), content_type=BRAND_FILES[name])
+    response["Cache-Control"] = "public, max-age=86400"
+    return response
+
+
 def health(request):
     return HttpResponse("ok", content_type="text/plain")
 

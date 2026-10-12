@@ -2,6 +2,8 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path("brand/<str:name>", views.brand_asset, name="brand_asset"),
+    path("favicon.ico", views.brand_asset, {"name": "favicon.ico"}),
     path("", views.login_view, name="login"),
     path("logout/", views.logout_view, name="logout"),
     path("password/change-required/", views.password_change_required, name="password_change_required"),

@@ -1,4 +1,9 @@
-<h1 align="center">mVault</h1>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.svg">
+    <img alt="mVault" src="docs/images/logo-light.svg" height="64">
+  </picture>
+</p>
 <p align="center"><b>A self-hosted family vault for passwords, bank cards, secrets, JSON and files.</b><br>Encrypted at rest. Runs from one container, or on the PostgreSQL and MinIO you already have.</p>
 
 <p align="center">
@@ -10,7 +15,7 @@
 
 > **Security note:** mVault has **not been independently audited**. Encryption at rest protects database leaks and backups, but the key lives next to the app, so anyone who controls the running host can read everything. Read [Security](docs/security.md) before storing anything you cannot afford to lose.
 >
-> **Status:** v0.4.0 is the first public release. The application has run in a homelab since 0.1.0; the container images and installers are new in this release, so please report anything odd as an issue.
+> **Status:** v0.5.0 adds the new brand and colour palette, five more interface languages and card-field validation. The application has run in a homelab since 0.1.0; v0.4.0 was the first public release, so please report anything odd as an issue.
 
 mVault keeps a family's sensitive things in one private place: logins, bank cards, environment variables and API keys, JSON documents and scanned files. Everything is organised as *member → project → folder → record*, values are encrypted before they reach the database, and sharing is explicit and read-only. It is a small Django application: no browser extension, no cloud, no telemetry.
 
