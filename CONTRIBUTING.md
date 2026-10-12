@@ -33,6 +33,15 @@ uv run --python 3.12 --with-requirements requirements.txt python manage.py makem
 
 Short imperative subject with a type prefix, matching the existing history: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, `release:`. Explain the *why* in the body when it is not obvious. Small, reviewable commits are preferred.
 
+When a commit was produced with substantial help from a coding agent, credit it with a `Co-authored-by` trailer on the last line(s) of the commit message (blank line before it):
+
+```
+Co-authored-by: Claude <noreply@anthropic.com>
+Co-authored-by: Codex <codex@users.noreply.github.com>
+```
+
+GitHub renders these as co-authors on the commit. The human who runs the agent remains the primary author and is responsible for the change (tests, review, conventions).
+
 ## Security-sensitive areas
 
 Changes here get extra scrutiny; explain your reasoning in the PR:
