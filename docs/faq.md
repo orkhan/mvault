@@ -26,7 +26,7 @@
 
 **Which proxy should I use?** Any. See [Reverse proxy](reverse-proxy.md).
 
-**Which languages?** English and Russian, chosen per member in Settings.
+**Which languages?** English, Russian, Azerbaijani, Turkish, Spanish, Belarusian and Ukrainian, chosen per member in Settings.
 
 **Can I get my data out?** Yes: *Settings → Export all data* gives a ZIP with a CSV of decrypted values per folder and your files. A plain `.env` export exists per environment folder in secret projects.
 

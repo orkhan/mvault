@@ -77,7 +77,7 @@ User ─┬─< Project ─┬─< Folder
 mvault_project/   settings (all env parsing), urls, wsgi
 mvault_app/       models, views, forms, crypto/fields, storage, throttle, middleware, templates, tests
   management/commands/   check_config, ensure_admin, provision_storage, rotate_encryption_key, seed_local, wait_for_db
-  templatetags/mvault_i18n.py   icons, avatar, entity_icon, RU translations
+  templatetags/mvault_i18n.py   icons, avatar, entity_icon, RU translations (other languages: locales/)
   migrations/     0001 … (0004–0006 introduce encryption; all reversible)
 docker/           entrypoint.sh (slim) and rootfs/ (s6 services for the all-in-one image)
 Dockerfile        targets: slim, aio

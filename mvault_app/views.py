@@ -249,7 +249,7 @@ def settings_view(request):
     user = request.user
     if request.method == "POST":
         user.full_name = request.POST.get("full_name", "").strip()[:160]
-        user.preferred_language = request.POST.get("preferred_language", "en") if request.POST.get("preferred_language") in {"en", "ru"} else "en"
+        user.preferred_language = request.POST.get("preferred_language") if request.POST.get("preferred_language") in dict(settings.LANGUAGES) else "en"
         email = request.POST.get("email", "").strip().lower()
         if not user.full_name or not email:
             messages.error(request, "Name and email are required.")
@@ -260,7 +260,7 @@ def settings_view(request):
             user.save(update_fields=["full_name", "email", "preferred_language"])
             messages.success(request, "Settings saved.")
             return redirect("settings")
-    return render(request, "mvault/settings.html")
+    return render(request, "mvault/settings.html", {"languages": settings.LANGUAGES})
 
 @member_required
 @require_POST

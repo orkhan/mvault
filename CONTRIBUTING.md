@@ -7,7 +7,7 @@ Thanks for helping! mVault is a small project, so a short conversation before a 
 - **Bugs and ideas:** open an issue using a template. For install or configuration problems use *Installation / configuration help*. **Never paste secrets** (encryption keys, passwords, `.env` contents, URLs with passwords).
 - **Security problems:** do **not** open an issue; report privately ([SECURITY.md](SECURITY.md)).
 - **Code, docs, translations:** open a pull request. For anything larger than a small fix, open an issue first so we can agree on the approach.
-- **Translations:** the interface is English and Russian. UI strings go through `{% tr %}`; the Russian text lives in the `RU` dictionary in `mvault_app/templatetags/mvault_i18n.py`.
+- **Translations:** the interface is available in English, Russian, Azerbaijani, Turkish, Spanish, Belarusian and Ukrainian. UI strings go through `{% tr %}`; the Russian text lives in the `RU` dictionary in `mvault_app/templatetags/mvault_i18n.py`, the other languages in `mvault_app/locales/<code>.py`.
 
 ## Development setup
 

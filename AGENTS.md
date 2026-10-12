@@ -8,7 +8,7 @@ mVault is a self-hosted Django vault (passwords, bank cards, env variables, JSON
 
 - `mvault_project/settings.py` — all configuration, parsed from env (`env()`, `env_bool()`, `NAME_FILE` support). `urls.py`, `wsgi.py`.
 - `mvault_app/` — the app. `models.py`, `views.py` (function views with `@member_required` / `@admin_required`), `forms.py`, `crypto.py` + `fields.py` (encryption), `storage.py` (S3, icons/avatars/attachments), `throttle.py`, `middleware.py` (language, forced password change, CSP), `context_processors.py` (sidebar, version), `utils.py`.
-- `mvault_app/templates/mvault/` — server-rendered templates; CSS and most JS are inline in `base.html`. `templatetags/mvault_i18n.py` — `{% tr %}`, `{% icon %}`, `{% avatar %}`, `{% entity_icon %}`, breadcrumbs and the **Russian dictionary `RU`**.
+- `mvault_app/templates/mvault/` — server-rendered templates; CSS and most JS are inline in `base.html`. `templatetags/mvault_i18n.py` — `{% tr %}`, `{% icon %}`, `{% avatar %}`, `{% entity_icon %}`, breadcrumbs and the **Russian dictionary `RU`**; `locales/` — the az, be, es, tr, uk tables.
 - `mvault_app/management/commands/` — `check_config`, `ensure_admin`, `provision_storage`, `rotate_encryption_key`, `seed_local`, `wait_for_db`.
 - `mvault_app/migrations/` — `0004`–`0006` introduced encryption (columns became text + in-place encryption); keep them reversible.
 - `Dockerfile` (targets `slim`, `aio`), `docker/entrypoint.sh`, `docker/rootfs/etc/s6-overlay/` (all-in-one services), `compose*.yaml`.
@@ -30,7 +30,7 @@ All tests must pass before you finish. A logged `RuntimeError: down` during test
 
 - Match the surrounding style: compact, function-based views, small helpers, minimal comments that explain *why*. Do not reformat unrelated code.
 - Auditable actions call `record_audit(...)`; user-facing messages use `messages.success/error` and are rendered through `tr`.
-- **i18n:** every new UI string uses `{% tr "…" %}` and needs an entry in `RU` in `mvault_i18n.py`.
+- **i18n:** every new UI string uses `{% tr "…" %}` and needs an entry in `RU` in `mvault_i18n.py` **and** in every `mvault_app/locales/<code>.py` (az, be, es, tr, uk); a test fails if a locale misses a key.
 - **Icons:** add the name to `ICONS` in `mvault_i18n.py` and a `<symbol id="mv-icon-…">` to `icons.html`.
 - **Storage in tests:** patch `mvault_app.storage.get_storage` with the in-memory `FakeStorage` from `tests.py`; never talk to real S3 or the network in tests. Views must call `storage.get_storage()` via the module so the patch applies.
 - **Settings:** add new env vars in `settings.py` using `env()`; document them in `docs/configuration.md` and `.env.example`.

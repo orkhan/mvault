@@ -66,5 +66,5 @@ See [architecture.md](architecture.md#code-layout). Conventions for contributors
 
 - **A stored value:** it must go through `EncryptedJSONField` (or be genuinely non-sensitive metadata). Add a reversible migration.
 - **A setting:** read it in `mvault_project/settings.py` via `env()` / `env_bool()` (this gives `_FILE` support for free), document it in [configuration.md](configuration.md) and `.env.example`.
-- **UI text:** wrap in the `{% tr %}` tag and add the Russian string to `RU` in `mvault_app/templatetags/mvault_i18n.py`.
+- **UI text:** wrap in the `{% tr %}` tag and add the string to `RU` in `mvault_app/templatetags/mvault_i18n.py` and to each file in `mvault_app/locales/` (`az`, `be`, `es`, `tr`, `uk`). Missing entries fall back to English, and a test checks that no locale lacks a key that `RU` has. To add a language, create `locales/<code>.py`, register it in `locales/__init__.py` and `LANGUAGES` in `settings.py`.
 - **An icon:** add it to `ICONS` in `mvault_i18n.py` and a `<symbol>` in `templates/mvault/icons.html`.

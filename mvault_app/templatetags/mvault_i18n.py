@@ -2,6 +2,7 @@ from django import template
 from django.urls import reverse
 from django.utils.html import format_html
 import hashlib
+from ..locales import TABLES
 from ..storage import avatar_public_url, icon_public_url
 
 register = template.Library()
@@ -322,6 +323,10 @@ RU = {
     "Updated": "Обновлено",
     "History": "История",
     "Copy to my vault": "Скопировать в мое хранилище",
+    "Enter a valid card number (12-19 digits).": "Введите корректный номер карты (12–19 цифр).",
+    "Enter the expiry date as MM/YY.": "Введите срок действия в формате ММ/ГГ.",
+    "Enter a valid CVV (3 digits, 4 for American Express).": "Введите корректный CVV (3 цифры, 4 для American Express).",
+    "PIN must be 4 to 12 digits.": "PIN-код должен содержать от 4 до 12 цифр.",
     "Reveal": "Показать",
     "Hide": "Скрыть",
     "Copy": "Копировать",
@@ -607,21 +612,26 @@ RU = {
     'Home': 'Дом',
     'Cloud': 'Облако',
     'Bolt': 'Молния',
+    "Close menu": "Закрыть меню", "Open record": "Открыть запись", "Open menu": "Открыть меню", "Menu": "Меню",
 }
+
+def translate(language, value):
+    """English text -> text in ``language``; falls back to English when there is no entry."""
+    text = str(value)
+    table = RU if language == "ru" else TABLES.get(language)
+    if not table:
+        return text
+    translated = table.get(text)
+    if translated is not None:
+        return translated
+    # Audit action identifiers and display strings can be generated dynamically.
+    return table.get(text.replace("_", " ").title(), text)
+
 
 @register.simple_tag(takes_context=True)
 def tr(context, value):
     request = context.get("request")
-    language = getattr(getattr(request, "user", None), "preferred_language", "en")
-    text = str(value)
-    if language != "ru":
-        return text
-    translated = RU.get(text)
-    if translated is not None:
-        return translated
-    # Audit action identifiers and display strings can be generated dynamically.
-    action = text.replace("_", " ").title()
-    return RU.get(action, text)
+    return translate(getattr(getattr(request, "user", None), "preferred_language", "en"), value)
 
 
 @register.simple_tag(takes_context=True)

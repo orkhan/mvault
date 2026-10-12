@@ -130,6 +130,24 @@ class MvaultWorkflowTests(TestCase):
         self.assertContains(project_form, "Банковские карты")
         self.assertContains(project_form, "Создать проект")
 
+    def test_every_language_covers_all_russian_strings_and_renders(self):
+        from .locales import TABLES
+        from .templatetags.mvault_i18n import RU
+        self.assertEqual({"az", "be", "es", "tr", "uk"}, set(TABLES))
+        for code, table in TABLES.items():
+            self.assertFalse(set(RU) - set(table), code)
+            self.assertTrue(all(table.values()), code)
+        self.client.force_login(self.alex)
+        for code in TABLES:
+            self.client.post(reverse("settings"), {"full_name": "Alex", "email": self.alex.email, "preferred_language": code})
+            self.alex.refresh_from_db()
+            self.assertEqual(self.alex.preferred_language, code)
+            self.assertContains(self.client.get(reverse("dashboard")), f'<html lang="{code}"')
+            self.assertContains(self.client.get(reverse("project_create")), TABLES[code]["Create a project"])
+        self.client.post(reverse("settings"), {"full_name": "Alex", "email": self.alex.email, "preferred_language": "xx"})
+        self.alex.refresh_from_db()
+        self.assertEqual(self.alex.preferred_language, "en")
+
     def test_russian_record_form_localizes_field_choices(self):
         self.alex.preferred_language = "ru"
         self.alex.save(update_fields=["preferred_language"])
@@ -158,6 +176,16 @@ class MvaultWorkflowTests(TestCase):
         self.assertSetEqual(set(edit_form.fields) - {"record_type"}, {"name", "username", "password", "website", "notes"})
         with self.assertRaises(ValueError):
             RecordForm(project_type="password_vault", record_type="bank_card")
+
+    def test_bank_card_field_validation(self):
+        def errors(**data):
+            form = RecordForm({"record_type": "bank_card", "name": "c", **data}, project_type="bank_cards_vault", record_type="bank_card", initial={"record_type": "bank_card"})
+            form.is_valid()
+            return set(form.errors)
+        self.assertEqual(errors(number="4111 1111 1111 1111", expiration="1/29", cvv="12", pin="12a"), {"expiration", "cvv", "pin"})
+        self.assertEqual(errors(number="4111111111111112"), {"number"})
+        self.assertEqual(errors(number="378282246310005", cvv="123"), {"cvv"})
+        self.assertEqual(errors(number="378282246310005", cvv="1234", expiration="12/2029", pin="1234"), set())
 
     def test_record_type_cannot_be_changed_through_create_or_edit_post(self):
         self.client.force_login(self.alex)

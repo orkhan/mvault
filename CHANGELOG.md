@@ -5,6 +5,8 @@ All notable changes to mVault are documented here. The format follows [Keep a Ch
 ## [Unreleased]
 
 ### Added
+- Interface languages: Azerbaijani, Turkish, Spanish (Spain), Belarusian and Ukrainian, selectable in Settings. Translations live in `mvault_app/locales/`; the machine-assisted texts would benefit from native-speaker review.
+- Record form: reveal/hide (eye) button for the Password and CVV inputs; bank card number (12–19 digits, Luhn), expiry (MM/YY), CVV (3 digits, 4 for Amex) and PIN (4–12 digits) are validated in the browser and on the server.
 - Contribution docs now describe a `Co-authored-by` trailer convention for crediting coding agents (Claude, Codex) on commits.
 - Proxmox helper: options to use an existing PostgreSQL and/or S3-compatible storage (`var_database_url`, `var_s3_*`, `var_provision_buckets`, `var_no_storage`, `var_base_url`, `var_admin_email`), plus interactive questions for hand-run installs; input is validated before anything is changed.
 

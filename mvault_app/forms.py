@@ -5,6 +5,7 @@ import string
 from django import forms
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
+from .templatetags.mvault_i18n import translate
 from .models import Project, User, VAULT_ICON_CHOICES
 
 class LoginForm(forms.Form):
@@ -58,9 +59,8 @@ class ProjectForm(CustomIconMixin, forms.ModelForm):
             self.fields.pop("project_type", None)
         else:  # JSON and File records are available in every project, so they have no dedicated project type
             self.fields["project_type"].choices = [c for c in self.fields["project_type"].choices if c[0] in ("password_vault", "bank_cards_vault", "secret_vault")]
-        if language == "ru":
-            if "project_type" in self.fields:
-                self.fields["project_type"].choices = [("password_vault", "Пароли"), ("bank_cards_vault", "Банковские карты"), ("secret_vault", "Секреты")]
+        if language != "en" and "project_type" in self.fields:
+            self.fields["project_type"].choices = [(value, translate(language, label)) for value, label in self.fields["project_type"].choices]
     class Meta:
         model = Project
         fields = ["name", "project_type", "icon"]
@@ -70,6 +70,15 @@ class FolderForm(CustomIconMixin):
     name = forms.CharField(max_length=120)
     icon = forms.ChoiceField(choices=VAULT_ICON_CHOICES, initial="folder")
 
+def luhn_valid(digits):
+    total = 0
+    for i, ch in enumerate(reversed(digits)):
+        n = int(ch)
+        if i % 2:
+            n = n * 2 - 9 if n > 4 else n * 2
+        total += n
+    return total % 10 == 0
+
 class RecordForm(forms.Form):
     record_type = forms.ChoiceField(choices=[("password", "Password"), ("bank_card", "Bank card"), ("variable", "Environment / secret variable")])
     name = forms.CharField(max_length=160, label="Title / key")
@@ -77,11 +86,11 @@ class RecordForm(forms.Form):
     password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=True))
     website = forms.URLField(required=False)
     cardholder = forms.CharField(max_length=160, required=False)
-    number = forms.CharField(max_length=40, required=False)
-    expiration = forms.CharField(max_length=12, required=False)
-    cvv = forms.CharField(max_length=8, required=False, widget=forms.PasswordInput(render_value=True))
+    number = forms.CharField(max_length=23, required=False, widget=forms.TextInput(attrs={"inputmode": "numeric", "autocomplete": "off", "data-card": "number", "pattern": r"[0-9 \-]{12,23}"}))
+    expiration = forms.CharField(max_length=7, required=False, widget=forms.TextInput(attrs={"inputmode": "numeric", "autocomplete": "off", "placeholder": "MM/YY", "data-card": "expiration", "pattern": r"(0[1-9]|1[0-2]) ?/ ?(\d{2}|\d{4})"}))
+    cvv = forms.CharField(max_length=4, required=False, widget=forms.PasswordInput(render_value=True, attrs={"inputmode": "numeric", "autocomplete": "off", "data-card": "cvv", "pattern": r"\d{3,4}"}))
     issuer = forms.CharField(max_length=160, required=False)
-    pin = forms.CharField(max_length=16, required=False, widget=forms.PasswordInput(render_value=True))
+    pin = forms.CharField(max_length=12, required=False, widget=forms.PasswordInput(render_value=True, attrs={"inputmode": "numeric", "autocomplete": "off", "data-card": "pin", "pattern": r"\d{4,12}"}))
     value = forms.CharField(required=False, widget=forms.Textarea)
     value_type = forms.ChoiceField(choices=[("secret", "Secret"), ("plain", "Plain")], initial="secret", required=False)
     json_value = forms.CharField(required=False, label="JSON", widget=forms.Textarea(attrs={"spellcheck": "false", "data-json-editor": "1", "rows": 16}))
@@ -103,7 +112,6 @@ class RecordForm(forms.Form):
     }
 
     TYPE_LABELS = {"password": "Password", "bank_card": "Bank card", "variable": "Environment variable", "json": "JSON", "file": "File"}
-    TYPE_LABELS_RU = {"password": "Пароль", "bank_card": "Банковская карта", "variable": "Переменная окружения / секрет", "json": "JSON", "file": "Файл"}
 
     @classmethod
     def allowed_types(cls, project_type):
@@ -121,7 +129,7 @@ class RecordForm(forms.Form):
         if record_type is not None and record_type not in allowed:
             raise ValueError("Record type is not allowed in this project.")
         self.type_fixed = record_type is not None
-        labels = self.TYPE_LABELS_RU if language == "ru" else self.TYPE_LABELS
+        labels = self.TYPE_LABELS if language == "en" else {kind: translate(language, "Environment / secret variable" if kind == "variable" else label) for kind, label in self.TYPE_LABELS.items()}
         shown = [record_type] if self.type_fixed else [kind for kind in allowed if kind != "file" or settings.S3_CONFIGURED]
         self.fields["record_type"].choices = [(kind, labels[kind]) for kind in shown]
         self.initial.setdefault("record_type", shown[0])
@@ -134,8 +142,8 @@ class RecordForm(forms.Form):
         for field_name, field in self.fields.items():
             field.record_types = [kind for kind in shown if field_name in self.TYPE_FIELDS[kind] and field_name not in ("record_type", "name")]
             field.widget.attrs.setdefault("class", "field")
-        if language == "ru" and "value_type" in self.fields:
-            self.fields["value_type"].choices = [("secret", "Секрет"), ("plain", "Обычный текст")]
+        if language != "en" and "value_type" in self.fields:
+            self.fields["value_type"].choices = [("secret", translate(language, "Secret")), ("plain", translate(language, "Plain"))]
     @classmethod
     def from_record(cls, record):
         return cls(project_type=record.project.project_type,
@@ -146,6 +154,8 @@ class RecordForm(forms.Form):
             self.add_error("record_type", "Record type cannot be changed.")
         if cleaned.get("record_type") == "variable" and cleaned.get("name") and not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", cleaned["name"].strip()):
             self.add_error("name", "Variable keys must use letters, numbers, and underscores, and cannot start with a number.")
+        if cleaned.get("record_type") == "bank_card":
+            self.clean_card(cleaned)
         if cleaned.get("record_type") == "json":
             text = (cleaned.get("json_value") or "").strip()
             if not text:
@@ -162,6 +172,29 @@ class RecordForm(forms.Form):
             elif not upload and not self.has_file:
                 self.add_error("file", "Choose a file to upload.")
         return cleaned
+    def clean_card(self, cleaned):
+        """Card number: 12-19 digits + Luhn (ISO/IEC 7812); expiry MM/YY; CVV 3 digits (4 for Amex); PIN 4-12 digits (ISO 9564)."""
+        digits = re.sub(r"[ -]", "", cleaned.get("number") or "")
+        if digits:
+            if not (re.fullmatch(r"\d{12,19}", digits) and luhn_valid(digits)):
+                self.add_error("number", "Enter a valid card number (12-19 digits).")
+            else:
+                cleaned["number"] = digits
+        expiration = (cleaned.get("expiration") or "").strip()
+        if expiration:
+            match = re.fullmatch(r"(0[1-9]|1[0-2])\s*/\s*(\d{2}|\d{4})", expiration)
+            if match:
+                cleaned["expiration"] = f"{match[1]}/{match[2][-2:]}"
+            else:
+                self.add_error("expiration", "Enter the expiry date as MM/YY.")
+        cvv = cleaned.get("cvv") or ""
+        if cvv:
+            length = 4 if digits[:2] in ("34", "37") else 3
+            if not re.fullmatch(r"\d{3,4}", cvv) or (digits and len(cvv) != length):
+                self.add_error("cvv", "Enter a valid CVV (3 digits, 4 for American Express).")
+        pin = cleaned.get("pin") or ""
+        if pin and not re.fullmatch(r"\d{4,12}", pin):
+            self.add_error("pin", "PIN must be 4 to 12 digits.")
     def payload(self):
         kind = self.cleaned_data["record_type"]
         keys = {"password": ["username", "password", "website", "notes"], "bank_card": ["cardholder", "number", "expiration", "cvv", "issuer", "pin", "notes"], "variable": ["value", "value_type"], "json": ["value", "notes"], "file": ["notes"]}[kind]

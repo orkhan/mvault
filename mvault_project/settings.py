@@ -122,7 +122,10 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.Argon2PasswordHasher", "django.contrib.auth.hashers.PBKDF2PasswordHasher"]
 LANGUAGE_CODE = "en"
-LANGUAGES = [("en", "English"), ("ru", "Русский")]
+LANGUAGES = [
+    ("en", "English"), ("ru", "Русский"), ("az", "Azərbaycanca"), ("tr", "Türkçe"),
+    ("es", "Español"), ("be", "Беларуская"), ("uk", "Українська"),
+]
 TIME_ZONE = env("MVAULT_TIME_ZONE") or env("TZ") or "UTC"
 USE_I18N = True
 USE_TZ = True
