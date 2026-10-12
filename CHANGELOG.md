@@ -5,6 +5,7 @@ All notable changes to mVault are documented here. The format follows [Keep a Ch
 ## [Unreleased]
 
 ### Added
+- Contribution docs now describe a `Co-authored-by` trailer convention for crediting coding agents (Claude, Codex) on commits.
 - Proxmox helper: options to use an existing PostgreSQL and/or S3-compatible storage (`var_database_url`, `var_s3_*`, `var_provision_buckets`, `var_no_storage`, `var_base_url`, `var_admin_email`), plus interactive questions for hand-run installs; input is validated before anything is changed.
 
 ## [0.4.0] - 2026-10-11
