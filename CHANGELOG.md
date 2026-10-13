@@ -4,6 +4,14 @@ All notable changes to mVault are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-10-13
+
+### Changed
+- The Log out button is red, and Dashboard, Shared with me, Activity and Settings are highlighted in the sidebar on their pages.
+
+### Fixed
+- Breadcrumb links were larger than on the dashboard because the sidebar `nav a` styles leaked into them.
+
 ## [0.5.1] - 2026-10-12
 
 ### Fixed
@@ -93,7 +101,8 @@ First public release.
 ### Added
 - Initial release: admin-managed member accounts with Argon2id password hashes; projects with fixed types (passwords, bank cards, secrets), folders and records; masked values with audited reveal/copy; record history; activity log; read-only project and record sharing with copy-to-vault; `.env` import/export for secret projects; English and Russian interface.
 
-[Unreleased]: https://github.com/orkhan/mvault/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/orkhan/mvault/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/orkhan/mvault/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/orkhan/mvault/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/orkhan/mvault/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/orkhan/mvault/releases/tag/v0.4.0

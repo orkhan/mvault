@@ -905,7 +905,7 @@ class ExportAllTests(TestCase):
     def test_export_button_on_settings_and_version(self):
         page = self.client.get(reverse("settings"))
         self.assertContains(page, reverse("export_all"))
-        self.assertContains(page, "version 0.5.1")
+        self.assertContains(page, "version 0.5.2")
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
