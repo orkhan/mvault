@@ -21,6 +21,7 @@ STRINGS = {
     "File": "Файл",
     "Download": "Спампаваць",
     "Downloaded file": "Файл спампаваны",
+    "Filled credentials from extension": "Даныя для ўваходу запоўнены з пашырэння",
     "Format": "Фарматаваць",
     "Minify": "Мінімізаваць",
     "Valid JSON": "Карэктны JSON",

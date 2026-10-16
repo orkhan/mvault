@@ -42,4 +42,6 @@ urlpatterns = [
     path("share/<str:kind>/<int:object_id>/", views.share_create, name="share_create"),
     path("share/<str:kind>/<int:share_id>/revoke/", views.share_revoke, name="share_revoke"),
     path("records/<int:record_id>/value/", views.record_value_action, name="record_value_action"),
+    path("extension/matches/", views.extension_matches, name="extension_matches"),
+    path("extension/records/<int:record_id>/", views.extension_credential, name="extension_credential"),
 ]

@@ -1,0 +1,13 @@
+{
+  "extName": { "message": "mVault Avtomatik doldurma" }, "extDescription": { "message": "Giriş formalarını mVault qeydləri ilə doldurun." },
+  "autofill": { "message": "Avtomatik doldurma" }, "vaultAddress": { "message": "mVault ünvanı" }, "urlPlaceholder": { "message": "https://vault.example.com" },
+  "connect": { "message": "Qoşul" }, "changeAddress": { "message": "mVault ünvanını dəyiş" },
+  "invalidAddress": { "message": "Giriş məlumatları və sorğu parametrləri olmayan düzgün http(s) mVault ünvanı daxil edin." }, "permissionDenied": { "message": "Qoşulmaq üçün mVault ünvanına girişə icazə verin." },
+  "reconnect": { "message": "Bu mVault ünvanına giriş icazəsi vermək üçün yenidən qoşulun." }, "openWebsite": { "message": "Əvvəlcə doldurmaq üçün veb-sayt açın." },
+  "siteOnly": { "message": "Avtomatik doldurma yalnız veb-saytlarda mümkündür." }, "signIn": { "message": "mVault başqa tabda açıldı. Orada daxil olun və genişlənməni yenidən seçin." },
+  "signInRetry": { "message": "mVault tabında daxil olun və yenidən cəhd edin." }, "noMatches": { "message": "Bu host adı ilə dəqiq uyğun gələn parol qeydi yoxdur." },
+  "chooseRecord": { "message": "Doldurmaq üçün qeydi seçin:" }, "filling": { "message": "Giriş sahələri doldurulur…" },
+  "refreshVault": { "message": "mVault tabını yeniləyin və yenidən cəhd edin." }, "noPasswordField": { "message": "Görünən parol sahəsi tapılmadı." },
+  "filledBoth": { "message": "İstifadəçi adı və parol dolduruldu." }, "filledPassword": { "message": "Parol dolduruldu. İstifadəçi adı sahəsi tapılmadı." }, "memberAccount": { "message": "Üzv hesabı ilə daxil olun; administrator hesabları seyf qeydlərinə daxil ola bilmir." }, "missingApi": { "message": "Bu mVault serverində genişlənmə API-si yoxdur. mVault tətbiqini yeniləyib yenidən cəhd edin." },
+  "contactError": { "message": "mVault ilə əlaqə yaratmaq mümkün olmadı." }, "retrievalError": { "message": "Bu qeydi almaq mümkün olmadı." }, "fillError": { "message": "Bu səhifəni doldurmaq mümkün olmadı." }
+}

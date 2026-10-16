@@ -1,0 +1,13 @@
+{
+  "extName": { "message": "Аўтазапаўненне mVault" }, "extDescription": { "message": "Запаўняйце формы ўваходу з запісаў mVault." },
+  "autofill": { "message": "Аўтазапаўненне" }, "vaultAddress": { "message": "Адрас mVault" }, "urlPlaceholder": { "message": "https://vault.example.com" },
+  "connect": { "message": "Падключыць" }, "changeAddress": { "message": "Змяніць адрас mVault" },
+  "invalidAddress": { "message": "Увядзіце карэктны адрас mVault з http(s), без уліковых даных і параметраў запыту." }, "permissionDenied": { "message": "Дазвольце доступ да адраса mVault для падключэння." },
+  "reconnect": { "message": "Падключыцеся зноў, каб дазволіць доступ да гэтага адраса mVault." }, "openWebsite": { "message": "Спачатку адкрыйце сайт для запаўнення." },
+  "siteOnly": { "message": "Аўтазапаўненне даступнае толькі на сайтах." }, "signIn": { "message": "mVault адкрыты ў іншай укладцы. Увайдзіце там і націсніце пашырэнне зноў." },
+  "signInRetry": { "message": "Увайдзіце ў mVault у яго ўкладцы і паспрабуйце зноў." }, "noMatches": { "message": "Няма запісаў з дакладным супадзеннем імя хоста." },
+  "chooseRecord": { "message": "Выберыце запіс для запаўнення:" }, "filling": { "message": "Запаўняюцца палі ўваходу…" },
+  "refreshVault": { "message": "Абнавіце ўкладку mVault і паспрабуйце зноў." }, "noPasswordField": { "message": "Не знойдзена бачнага поля пароля." },
+  "filledBoth": { "message": "Імя карыстальніка і пароль запоўнены." }, "filledPassword": { "message": "Пароль запоўнены. Поле імя карыстальніка не знойдзена." }, "memberAccount": { "message": "Увайдзіце з уліковым запісам удзельніка; адміністратар не мае доступу да запісаў сховішча." }, "missingApi": { "message": "На гэтым серверы mVault яшчэ няма API пашырэння. Абнавіце праграму mVault і паспрабуйце зноў." },
+  "contactError": { "message": "Не ўдалося звязацца з mVault." }, "retrievalError": { "message": "Не ўдалося атрымаць гэты запіс." }, "fillError": { "message": "Не ўдалося запоўніць гэтую старонку." }
+}

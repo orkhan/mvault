@@ -20,6 +20,10 @@ Pin a specific version tag in production (`:0.4.0`) instead of `:latest`, so upg
 
 **Downgrading is not supported.** If an upgrade fails, restore the backup and start the previous image.
 
+## Upgrading to 0.6.0
+
+This release adds the optional Chrome extension and its authenticated endpoints. It has no database migration. Update the mVault app before connecting the extension; older servers do not provide the extension API.
+
 ## Upgrading from 0.3.x (homelab / pre-release deployments) to 0.4
 
 0.4 makes the app configurable for everyone, which changed some defaults that used to be deployment-specific. If you ran the 0.2/0.3 compose files, set these **before** starting the new image:

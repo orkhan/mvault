@@ -15,9 +15,9 @@
 
 > **Security note:** mVault has **not been independently audited**. Encryption at rest protects database leaks and backups, but the key lives next to the app, so anyone who controls the running host can read everything. Read [Security](docs/security.md) before storing anything you cannot afford to lose.
 >
-> **Status:** v0.5.0 adds the new brand and colour palette, five more interface languages and card-field validation. The application has run in a homelab since 0.1.0; v0.4.0 was the first public release, so please report anything odd as an issue.
+> **Status:** v0.6.0 adds the click-to-fill Chrome extension for password records. The application has run in a homelab since 0.1.0; v0.4.0 was the first public release, so please report anything odd as an issue.
 
-mVault keeps a family's sensitive things in one private place: logins, bank cards, environment variables and API keys, JSON documents and scanned files. Everything is organised as *member → project → folder → record*, values are encrypted before they reach the database, and sharing is explicit and read-only. It is a small Django application: no browser extension, no cloud, no telemetry.
+mVault keeps a family's sensitive things in one private place: logins, bank cards, environment variables and API keys, JSON documents and scanned files. Everything is organised as *member → project → folder → record*, values are encrypted before they reach the database, and sharing is explicit and read-only. It is a small Django application with an optional click-to-fill Chrome extension; it has no cloud service or telemetry.
 
 <p align="center">
   <img alt="mVault dashboard" src="docs/images/dashboard.png" width="860">
@@ -43,6 +43,7 @@ mVault keeps a family's sensitive things in one private place: logins, bank card
 - **Masked values** – passwords, card numbers, CVV, PIN and secret variables are hidden until revealed; reveal and copy actions are written to the audit log.
 - **Custom icons and avatars** – upload an icon per project/folder and a personal avatar. Avatar order: your upload, then your [Gravatar](https://gravatar.com), then your initials.
 - **Sharing** – share a whole project or single records with another member, read-only and live. Recipients can copy a shared record into their own vault.
+- **Chrome autofill** – the [Chrome extension](docs/chrome-extension.md) fills a selected password record's username and password on an exact hostname match. It uses the signed-in mVault session and does not submit forms.
 - **History and audit** – every record keeps its revisions; a paginated activity log shows who did what.
 - **Export everything** – *Settings → Export all data* downloads a ZIP shaped like your tree, with a CSV of decrypted values per folder and file records as the original files. (It contains secrets in plain text; guard it.)
 - **Encryption at rest** – record values, history and attachment metadata are stored as AES-256-GCM ciphertext; see [Security](docs/security.md) for exactly what is and isn't covered.
@@ -54,7 +55,7 @@ mVault keeps a family's sensitive things in one private place: logins, bank card
 
 - It stays small: one Python app, PostgreSQL, and optional S3-compatible storage for files and images.
 - It fits a homelab: one container with everything inside, or just the app pointed at the PostgreSQL and MinIO you already run. The reverse proxy is yours (Nginx Proxy Manager, Caddy, Traefik, nginx, …).
-- It is honest about limits: it is not an end-to-end-encrypted, browser-autofill password manager. See the [FAQ](docs/faq.md) and [Security](docs/security.md).
+- It is honest about limits: the server can decrypt records, and browser autofill is user initiated. See the [FAQ](docs/faq.md) and [Security](docs/security.md).
 
 ## Quick start (Docker, all-in-one)
 

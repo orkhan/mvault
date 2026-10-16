@@ -1,0 +1,13 @@
+{
+  "extName": { "message": "Autocompletar mVault" }, "extDescription": { "message": "Rellena formularios de acceso con tus registros de mVault." },
+  "autofill": { "message": "Autocompletar" }, "vaultAddress": { "message": "Dirección de mVault" }, "urlPlaceholder": { "message": "https://vault.example.com" },
+  "connect": { "message": "Conectar" }, "changeAddress": { "message": "Cambiar dirección de mVault" },
+  "invalidAddress": { "message": "Introduce una dirección http(s) válida de mVault, sin credenciales ni parámetros de consulta." }, "permissionDenied": { "message": "Permite el acceso a la dirección de mVault para conectar." },
+  "reconnect": { "message": "Vuelve a conectar para permitir el acceso a esta dirección de mVault." }, "openWebsite": { "message": "Abre primero un sitio web para rellenar." },
+  "siteOnly": { "message": "El autocompletado solo está disponible en sitios web." }, "signIn": { "message": "mVault se abrió en otra pestaña. Inicia sesión allí y vuelve a pulsar la extensión." },
+  "signInRetry": { "message": "Inicia sesión en la pestaña de mVault y vuelve a intentarlo." }, "noMatches": { "message": "No hay registros de contraseñas para este dominio exacto." },
+  "chooseRecord": { "message": "Elige un registro para rellenar:" }, "filling": { "message": "Rellenando campos de acceso…" },
+  "refreshVault": { "message": "Actualiza la pestaña de mVault e inténtalo de nuevo." }, "noPasswordField": { "message": "No se encontró un campo de contraseña visible." },
+  "filledBoth": { "message": "Se rellenaron el usuario y la contraseña." }, "filledPassword": { "message": "Se rellenó la contraseña. No se encontró el campo de usuario." }, "memberAccount": { "message": "Inicia sesión con una cuenta de miembro; las cuentas de administrador no pueden acceder a las contraseñas." }, "missingApi": { "message": "Este servidor de mVault aún no tiene la API de la extensión. Actualiza mVault e inténtalo de nuevo." },
+  "contactError": { "message": "No se pudo conectar con mVault." }, "retrievalError": { "message": "No se pudo obtener este registro." }, "fillError": { "message": "No se pudo rellenar esta página." }
+}

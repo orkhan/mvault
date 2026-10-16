@@ -24,6 +24,38 @@ class MvaultWorkflowTests(TestCase):
         self.assertEqual(self.client.get(reverse("admin_dashboard")).status_code, 403)
         self.assertEqual(self.client.get(reverse("dashboard")).status_code, 200)
 
+    def test_extension_lists_exact_host_matches_without_credentials(self):
+        self.client.force_login(self.alex)
+        response = self.client.get(reverse("extension_matches"), {"hostname": "EXAMPLE.TEST."})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"matches": [{"id": self.record.pk, "name": "Mail"}]})
+        self.assertEqual(response["Cache-Control"], "no-store")
+        self.assertNotIn("password", response.content.decode())
+        self.assertEqual(self.client.get(reverse("extension_matches"), {"hostname": "sub.example.test"}).json(), {"matches": []})
+
+    def test_extension_rechecks_host_and_access_before_returning_credentials(self):
+        self.client.force_login(self.alex)
+        url = reverse("extension_credential", args=[self.record.pk])
+        response = self.client.post(url, {"hostname": "example.test"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"username": "alex", "password": "p@ssword"})
+        self.assertEqual(response["Cache-Control"], "no-store")
+        self.assertTrue(AuditEvent.objects.filter(actor=self.alex, record=self.record, action="extension_credential_filled").exists())
+        self.assertEqual(self.client.post(url, {"hostname": "other.test"}).status_code, 404)
+        self.client.force_login(self.sam)
+        self.assertEqual(self.client.post(url, {"hostname": "example.test"}).status_code, 404)
+
+    def test_extension_can_fill_a_shared_password_record(self):
+        self.client.force_login(self.alex)
+        self.client.post(reverse("share_create", args=["record", self.record.pk]), {"recipient": self.sam.pk})
+        self.client.force_login(self.sam)
+        matches = self.client.get(reverse("extension_matches"), {"hostname": "example.test"})
+        self.assertEqual(matches.status_code, 200)
+        self.assertEqual(matches.json(), {"matches": [{"id": self.record.pk, "name": "Mail"}]})
+        credential = self.client.post(reverse("extension_credential", args=[self.record.pk]), {"hostname": "example.test"})
+        self.assertEqual(credential.status_code, 200)
+        self.assertEqual(credential.json()["username"], "alex")
+
     def test_member_layout_uses_full_width_sidebar_icons_and_places_version_after_logout(self):
         self.client.force_login(self.alex)
         response = self.client.get(reverse("dashboard"))
@@ -905,7 +937,7 @@ class ExportAllTests(TestCase):
     def test_export_button_on_settings_and_version(self):
         page = self.client.get(reverse("settings"))
         self.assertContains(page, reverse("export_all"))
-        self.assertContains(page, "version 0.5.2")
+        self.assertContains(page, "version 0.6.0")
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])

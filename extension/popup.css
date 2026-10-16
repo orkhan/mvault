@@ -1,0 +1,16 @@
+:root { color-scheme: light dark; font: 14px/1.4 system-ui, sans-serif; }
+body { width: 320px; margin: 0; background: #171816; color: #f2f0e9; }
+main { padding: 18px; }
+header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+header small { color: #aaa99f; font-size: 11px; }
+.brand-logo { display: block; width: 128px; height: auto; }
+label { display: block; margin-bottom: 6px; color: #c7c5bb; font-size: 12px; }
+input { box-sizing: border-box; width: 100%; padding: 10px; border: 1px solid #45463f; border-radius: 8px; background: #22231f; color: inherit; }
+button { width: 100%; margin-top: 12px; padding: 10px; border: 0; border-radius: 8px; background: #d6b978; color: #171816; font-weight: 650; cursor: pointer; }
+button:hover { background: #e4ca91; }
+.site { overflow: hidden; margin-bottom: 10px; color: #d6b978; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+#message { margin: 10px 0; color: #c7c5bb; }
+.matches { display: grid; gap: 8px; }
+.matches button { margin: 0; text-align: left; }
+.quiet { padding: 7px; background: transparent; color: #aaa99f; font-size: 12px; font-weight: 400; }
+[hidden] { display: none !important; }

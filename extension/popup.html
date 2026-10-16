@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>mVault Autofill</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header><img class="brand-logo" src="mvault-logo.svg" alt="mVault"><small id="autofill-label"></small></header>
+      <section id="setup" hidden>
+        <label id="vault-address-label" for="vault-url"></label>
+        <input id="vault-url" type="url" autocomplete="url">
+        <button id="save"></button>
+      </section>
+      <section id="content" hidden>
+        <div class="site" id="site"></div>
+        <div id="message" role="status"></div>
+        <div id="matches" class="matches"></div>
+        <button class="quiet" id="change"></button>
+      </section>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

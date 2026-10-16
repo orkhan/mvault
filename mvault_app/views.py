@@ -5,6 +5,7 @@ import os
 import re
 import tempfile
 import zipfile
+from urllib.parse import urlsplit
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -18,7 +19,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import content_disposition_header
 from django.utils.text import slugify
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 from .decorators import admin_required, member_required
 from .forms import LoginForm, MemberCreateForm, ProjectForm, FolderForm, RecordForm, SetTemporaryPasswordForm
 from . import storage, throttle
@@ -830,6 +831,76 @@ def record_value_action(request, record_id):
         raise Http404
     record_audit(request.user, record.owner, f"value_{action}", record=record, details={"field": field})
     return JsonResponse({"value": value})
+
+
+def _extension_hostname(value):
+    """Return a canonical DNS hostname for an extension lookup, or an empty string."""
+    value = (value or "").strip().lower().rstrip(".")
+    if not value or len(value) > 253 or any(char in value for char in "/\\@?#"):
+        return ""
+    try:
+        hostname = value.encode("idna").decode("ascii")
+    except UnicodeError:
+        return ""
+    labels = hostname.split(".")
+    if any(not label or len(label) > 63 or label.startswith("-") or label.endswith("-") or not re.fullmatch(r"[a-z0-9-]+", label) for label in labels):
+        return ""
+    return hostname
+
+
+@member_required
+@require_GET
+def extension_matches(request):
+    """List password record labels whose website exactly matches the active tab host."""
+    hostname = _extension_hostname(request.GET.get("hostname"))
+    if not hostname:
+        return JsonResponse({"error": "Invalid hostname."}, status=400)
+    records = Record.objects.filter(record_type="password", is_deleted=False, project__is_deleted=False).exclude(folder__is_deleted=True).filter(
+        Q(owner=request.user) |
+        Q(project__shares__recipient=request.user, project__shares__revoked_at__isnull=True, project__owner__is_active=True) |
+        Q(shares__recipient=request.user, shares__revoked_at__isnull=True, owner__is_active=True)
+    ).select_related("project", "folder", "owner").distinct()
+    matches = []
+    for record in records:
+        website = str(record.data.get("website", "")).strip()
+        if not website:
+            continue
+        try:
+            parsed = urlsplit(website if "://" in website else f"https://{website}")
+            match = _extension_hostname(parsed.hostname)
+        except ValueError:
+            match = ""
+        if match == hostname:
+            matches.append({"id": record.pk, "name": record.name})
+    response = JsonResponse({"matches": matches})
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@member_required
+@require_POST
+def extension_credential(request, record_id):
+    """Return a credential only after the extension selects a host-matching record."""
+    hostname = _extension_hostname(request.POST.get("hostname"))
+    if not hostname:
+        return JsonResponse({"error": "Invalid hostname."}, status=400)
+    record = get_object_or_404(
+        Record.objects.select_related("project", "folder", "owner").exclude(folder__is_deleted=True),
+        pk=record_id, record_type="password", is_deleted=False, project__is_deleted=False,
+    )
+    allowed, _shared = record_accessible(request.user, record)
+    website = str(record.data.get("website", "")).strip()
+    try:
+        parsed = urlsplit(website if "://" in website else f"https://{website}")
+        match = _extension_hostname(parsed.hostname)
+    except ValueError:
+        match = ""
+    if not allowed or not website or match != hostname:
+        raise Http404
+    record_audit(request.user, record.owner, "extension_credential_filled", record=record, details={"hostname": hostname})
+    response = JsonResponse({"username": str(record.data.get("username") or ""), "password": str(record.data.get("password") or "")})
+    response["Cache-Control"] = "no-store"
+    return response
 
 @member_required
 @require_POST

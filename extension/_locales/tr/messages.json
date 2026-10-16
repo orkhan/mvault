@@ -1,0 +1,13 @@
+{
+  "extName": { "message": "mVault Otomatik Doldurma" }, "extDescription": { "message": "Giriş formlarını mVault kayıtlarınızla doldurun." },
+  "autofill": { "message": "Otomatik doldurma" }, "vaultAddress": { "message": "mVault adresi" }, "urlPlaceholder": { "message": "https://vault.example.com" },
+  "connect": { "message": "Bağlan" }, "changeAddress": { "message": "mVault adresini değiştir" },
+  "invalidAddress": { "message": "Kimlik bilgileri veya sorgu parametreleri içermeyen geçerli bir http(s) mVault adresi girin." }, "permissionDenied": { "message": "Bağlanmak için mVault adresine erişime izin verin." },
+  "reconnect": { "message": "Bu mVault adresine erişim izni vermek için yeniden bağlanın." }, "openWebsite": { "message": "Önce doldurulacak bir web sitesi açın." },
+  "siteOnly": { "message": "Otomatik doldurma yalnızca web sitelerinde kullanılabilir." }, "signIn": { "message": "mVault başka bir sekmede açıldı. Orada oturum açın ve uzantıya yeniden tıklayın." },
+  "signInRetry": { "message": "mVault sekmesinde oturum açıp yeniden deneyin." }, "noMatches": { "message": "Bu ana bilgisayar adıyla tam eşleşen parola kaydı yok." },
+  "chooseRecord": { "message": "Doldurmak için kayıt seçin:" }, "filling": { "message": "Giriş alanları dolduruluyor…" },
+  "refreshVault": { "message": "mVault sekmesini yenileyip yeniden deneyin." }, "noPasswordField": { "message": "Görünür parola alanı bulunamadı." },
+  "filledBoth": { "message": "Kullanıcı adı ve parola dolduruldu." }, "filledPassword": { "message": "Parola dolduruldu. Kullanıcı adı alanı bulunamadı." }, "memberAccount": { "message": "Bir üye hesabıyla oturum açın; yönetici hesapları kasa kayıtlarına erişemez." }, "missingApi": { "message": "Bu mVault sunucusunda henüz uzantı API'si yok. mVault uygulamasını güncelleyip yeniden deneyin." },
+  "contactError": { "message": "mVault ile bağlantı kurulamadı." }, "retrievalError": { "message": "Bu kayıt alınamadı." }, "fillError": { "message": "Bu sayfa doldurulamadı." }
+}

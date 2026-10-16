@@ -111,6 +111,12 @@ Status legend: `[ ]` todo, `[x]` done.
 - [x] Switch the maintainer's homelab to `ghcr.io/orkhan/mvault:<ver>-slim` with the existing PostgreSQL/MinIO and `MVAULT_ADMIN_EMAIL` preserved — done 2026-10-11: `0.4.0-slim` from GHCR, backup first, admin e-mail/URL/time zone preserved; one admin, 45/45 records decrypt
 - [ ] Announce (GitHub release, r/selfhosted, awesome-selfhosted PR) once docs and CI are green — tracked in [#8](https://github.com/orkhan/mvault/issues/8)
 
+### Phase 9 — Browser autofill
+- [x] Manifest V3 Chrome extension with user-initiated fill, exact-host matching, scoped host permission, and seven interface locales
+- [x] Authenticated mVault endpoints return matching labels and selected credentials only after server-side access and hostname checks; successful fills are audited
+- [x] Document setup and security; cover owner, shared-record, and exact-host access in tests
+- [ ] Manually smoke test the unpacked extension in Chrome against a local mVault instance
+
 ## Risks and decisions (resolved 2026-10-11)
 
 | Risk | Decision |

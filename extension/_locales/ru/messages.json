@@ -1,0 +1,13 @@
+{
+  "extName": { "message": "Автозаполнение mVault" }, "extDescription": { "message": "Заполняйте формы входа данными из mVault." },
+  "autofill": { "message": "Автозаполнение" }, "vaultAddress": { "message": "Адрес mVault" }, "urlPlaceholder": { "message": "https://vault.example.com" },
+  "connect": { "message": "Подключить" }, "changeAddress": { "message": "Изменить адрес mVault" },
+  "invalidAddress": { "message": "Введите корректный адрес mVault с http(s), без учетных данных и параметров запроса." }, "permissionDenied": { "message": "Разрешите доступ к адресу mVault для подключения." },
+  "reconnect": { "message": "Подключитесь снова, чтобы разрешить доступ к этому адресу mVault." }, "openWebsite": { "message": "Сначала откройте сайт для заполнения." },
+  "siteOnly": { "message": "Автозаполнение доступно только на сайтах." }, "signIn": { "message": "mVault открыт в другой вкладке. Войдите там и нажмите расширение снова." },
+  "signInRetry": { "message": "Войдите в mVault во вкладке браузера и попробуйте снова." }, "noMatches": { "message": "Нет записей с точным совпадением домена." },
+  "chooseRecord": { "message": "Выберите запись для заполнения:" }, "filling": { "message": "Заполняем поля входа…" },
+  "refreshVault": { "message": "Обновите вкладку mVault после входа и попробуйте снова." }, "noPasswordField": { "message": "Не найдено видимое поле пароля." },
+  "filledBoth": { "message": "Имя пользователя и пароль заполнены." }, "filledPassword": { "message": "Пароль заполнен. Поле имени пользователя не найдено." }, "memberAccount": { "message": "Войдите с учетной записью участника; администратор не может просматривать записи хранилища." }, "missingApi": { "message": "На этом сервере mVault пока нет API расширения. Обновите приложение mVault и повторите попытку." },
+  "contactError": { "message": "Не удалось связаться с mVault." }, "retrievalError": { "message": "Не удалось получить эту запись." }, "fillError": { "message": "Не удалось заполнить эту страницу." }
+}

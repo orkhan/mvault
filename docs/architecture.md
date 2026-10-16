@@ -8,6 +8,7 @@ mVault is a single Django application (Python 3.12) backed by PostgreSQL, with o
 flowchart LR
   subgraph Browser
     U[Member / admin]
+    E[Chrome extension]
   end
   P[Your reverse proxy<br/>HTTPS, body ≥ 55 MB]
   subgraph mVault
@@ -17,10 +18,13 @@ flowchart LR
   S3[(S3-compatible storage<br/>MinIO / S3 / R2 ...)]
   G[gravatar.com]
   U -->|HTTPS| P -->|HTTP| W
+  E -.->|exact-host lookup in signed-in app tab| P
   W -->|encrypted values| PG
   W -->|icons, avatars, files| S3
   U -.->|avatar lookup, browser only| G
 ```
+
+The optional Chrome extension runs only after the member clicks it. It uses the existing signed-in app tab for same-origin requests, and the app returns credentials only after an exact-host match and the normal record access check. See [Chrome extension](chrome-extension.md).
 
 | Component | All-in-one image | Slim image / native / your infra |
 |---|---|---|

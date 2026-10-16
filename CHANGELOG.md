@@ -4,6 +4,11 @@ All notable changes to mVault are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-16
+
+### Added
+- Chrome extension (`extension/`) for user-initiated username and password autofill from active password records with an exact website hostname match. It uses the signed-in mVault browser session and records successful fills in the audit log. Setup and security details are in [docs/chrome-extension.md](docs/chrome-extension.md).
+
 ## [0.5.2] - 2026-10-13
 
 ### Changed
@@ -101,7 +106,8 @@ First public release.
 ### Added
 - Initial release: admin-managed member accounts with Argon2id password hashes; projects with fixed types (passwords, bank cards, secrets), folders and records; masked values with audited reveal/copy; record history; activity log; read-only project and record sharing with copy-to-vault; `.env` import/export for secret projects; English and Russian interface.
 
-[Unreleased]: https://github.com/orkhan/mvault/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/orkhan/mvault/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/orkhan/mvault/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/orkhan/mvault/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/orkhan/mvault/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/orkhan/mvault/compare/v0.4.0...v0.5.0
