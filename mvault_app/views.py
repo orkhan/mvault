@@ -851,7 +851,7 @@ def _extension_hostname(value):
 @member_required
 @require_GET
 def extension_matches(request):
-    """List password record labels whose website exactly matches the active tab host."""
+    """List accessible password records whose website matches the active tab host."""
     hostname = _extension_hostname(request.GET.get("hostname"))
     if not hostname:
         return JsonResponse({"error": "Invalid hostname."}, status=400)
@@ -859,7 +859,7 @@ def extension_matches(request):
         Q(owner=request.user) |
         Q(project__shares__recipient=request.user, project__shares__revoked_at__isnull=True, project__owner__is_active=True) |
         Q(shares__recipient=request.user, shares__revoked_at__isnull=True, owner__is_active=True)
-    ).select_related("project", "folder", "owner").distinct()
+    ).select_related("project", "folder", "owner").distinct().order_by("name", "pk")
     matches = []
     for record in records:
         website = str(record.data.get("website", "")).strip()
@@ -871,7 +871,7 @@ def extension_matches(request):
         except ValueError:
             match = ""
         if match == hostname:
-            matches.append({"id": record.pk, "name": record.name})
+            matches.append({"id": record.pk, "name": record.name, "username": str(record.data.get("username") or "")})
     response = JsonResponse({"matches": matches})
     response["Cache-Control"] = "no-store"
     return response

@@ -10,7 +10,9 @@ button { width: 100%; margin-top: 12px; padding: 10px; border: 0; border-radius:
 button:hover { background: #e4ca91; }
 .site { overflow: hidden; margin-bottom: 10px; color: #d6b978; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 #message { margin: 10px 0; color: #c7c5bb; }
-.matches { display: grid; gap: 8px; }
-.matches button { margin: 0; text-align: left; }
+.matches { display: grid; max-height: 380px; gap: 8px; overflow-y: auto; }
+.matches button { display: grid; gap: 2px; margin: 0; text-align: left; }
+.record-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.record-username { overflow: hidden; color: #3d382c; font-size: 12px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
 .quiet { padding: 7px; background: transparent; color: #aaa99f; font-size: 12px; font-weight: 400; }
 [hidden] { display: none !important; }

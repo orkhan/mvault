@@ -92,7 +92,14 @@ async function loadMatches() {
   showMessage(t("chooseRecord"));
   for (const record of data.matches) {
     const button = document.createElement("button");
-    button.textContent = record.name;
+    button.className = "record";
+    const name = document.createElement("span");
+    name.className = "record-name";
+    name.textContent = record.name;
+    const username = document.createElement("small");
+    username.className = "record-username";
+    username.textContent = `${t("username")}: ${record.username || t("noUsername")}`;
+    button.append(name, username);
     button.addEventListener("click", () => fillRecord(vaultTab.id, record.id, targetUrl.hostname));
     matches.append(button);
   }

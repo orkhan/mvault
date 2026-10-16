@@ -28,7 +28,7 @@ class MvaultWorkflowTests(TestCase):
         self.client.force_login(self.alex)
         response = self.client.get(reverse("extension_matches"), {"hostname": "EXAMPLE.TEST."})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"matches": [{"id": self.record.pk, "name": "Mail"}]})
+        self.assertEqual(response.json(), {"matches": [{"id": self.record.pk, "name": "Mail", "username": "alex"}]})
         self.assertEqual(response["Cache-Control"], "no-store")
         self.assertNotIn("password", response.content.decode())
         self.assertEqual(self.client.get(reverse("extension_matches"), {"hostname": "sub.example.test"}).json(), {"matches": []})
@@ -51,7 +51,7 @@ class MvaultWorkflowTests(TestCase):
         self.client.force_login(self.sam)
         matches = self.client.get(reverse("extension_matches"), {"hostname": "example.test"})
         self.assertEqual(matches.status_code, 200)
-        self.assertEqual(matches.json(), {"matches": [{"id": self.record.pk, "name": "Mail"}]})
+        self.assertEqual(matches.json(), {"matches": [{"id": self.record.pk, "name": "Mail", "username": "alex"}]})
         credential = self.client.post(reverse("extension_credential", args=[self.record.pk]), {"hostname": "example.test"})
         self.assertEqual(credential.status_code, 200)
         self.assertEqual(credential.json()["username"], "alex")
@@ -937,7 +937,7 @@ class ExportAllTests(TestCase):
     def test_export_button_on_settings_and_version(self):
         page = self.client.get(reverse("settings"))
         self.assertContains(page, reverse("export_all"))
-        self.assertContains(page, "version 0.6.0")
+        self.assertContains(page, "version 0.7.0")
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])

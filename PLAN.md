@@ -113,7 +113,7 @@ Status legend: `[ ]` todo, `[x]` done.
 
 ### Phase 9 — Browser autofill
 - [x] Manifest V3 Chrome extension with user-initiated fill, exact-host matching, scoped host permission, and seven interface locales
-- [x] Authenticated mVault endpoints return matching labels and selected credentials only after server-side access and hostname checks; successful fills are audited
+- [x] Authenticated mVault endpoints list all accessible exact-host password matches with usernames and return selected credentials only after server-side access and hostname checks; successful fills are audited
 - [x] Document setup and security; cover owner, shared-record, and exact-host access in tests
 - [ ] Manually smoke test the unpacked extension in Chrome against a local mVault instance
 

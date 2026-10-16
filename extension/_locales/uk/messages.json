@@ -6,7 +6,7 @@
   "reconnect": { "message": "Підключіться знову, щоб дозволити доступ до цієї адреси mVault." }, "openWebsite": { "message": "Спочатку відкрийте сайт для заповнення." },
   "siteOnly": { "message": "Автозаповнення доступне лише на вебсайтах." }, "signIn": { "message": "mVault відкрито в іншій вкладці. Увійдіть там і натисніть розширення знову." },
   "signInRetry": { "message": "Увійдіть у mVault у його вкладці й повторіть спробу." }, "noMatches": { "message": "Немає записів із точним збігом доменного імені." },
-  "chooseRecord": { "message": "Виберіть запис для заповнення:" }, "filling": { "message": "Заповнюються поля входу…" },
+  "chooseRecord": { "message": "Виберіть запис для заповнення:" }, "username": { "message": "Ім’я користувача" }, "noUsername": { "message": "Не вказано" }, "filling": { "message": "Заповнюються поля входу…" },
   "refreshVault": { "message": "Оновіть вкладку mVault і повторіть спробу." }, "noPasswordField": { "message": "Не знайдено видимого поля пароля." },
   "filledBoth": { "message": "Ім’я користувача й пароль заповнено." }, "filledPassword": { "message": "Пароль заповнено. Поле імені користувача не знайдено." }, "memberAccount": { "message": "Увійдіть як учасник; адміністратор не має доступу до записів сховища." }, "missingApi": { "message": "На цьому сервері mVault ще немає API розширення. Оновіть mVault і повторіть спробу." },
   "contactError": { "message": "Не вдалося зв’язатися з mVault." }, "retrievalError": { "message": "Не вдалося отримати цей запис." }, "fillError": { "message": "Не вдалося заповнити цю сторінку." }

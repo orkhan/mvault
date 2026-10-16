@@ -46,7 +46,7 @@ Old backups remain protected by the old key; keep it until you retire them.
 - Accounts are created only by the administrator; new and reset passwords must be changed at next sign-in.
 - **Sign-in throttling:** after `MVAULT_LOGIN_MAX_ATTEMPTS` (default 5) failed attempts for an e-mail within `MVAULT_LOGIN_WINDOW_SECONDS` (default 15 minutes), sign-in is refused with HTTP 429; the per-address limit is four times that. Throttling uses the rightmost `X-Forwarded-For` entry when `MVAULT_TRUST_PROXY` is on. There is no two-factor sign-in yet.
 - Masked values are revealed or copied only on request; those actions are audited. Shares are read-only and revoked automatically when an account is deactivated or deleted.
-- The development Chrome extension uses the existing signed-in browser session. It lists only exact-host matches, returns a credential only after the user selects a record, rechecks access and hostname on the server, and disables response caching. The extension itself can read filled credentials in the browser; install only reviewed copies. See [Chrome extension](chrome-extension.md).
+- The development Chrome extension uses the existing signed-in browser session. It lists names and usernames for all accessible exact-host password matches, but returns a password only after the user selects a record. It rechecks access and hostname on the server and disables response caching. The extension itself can read filled credentials in the browser; install only reviewed copies. See [Chrome extension](chrome-extension.md).
 
 ## Web hardening
 

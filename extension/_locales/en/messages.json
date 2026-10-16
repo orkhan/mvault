@@ -15,6 +15,8 @@
   "signInRetry": { "message": "Sign in to mVault in its browser tab, then try again." },
   "noMatches": { "message": "No password record matches this exact hostname." },
   "chooseRecord": { "message": "Choose a record to fill:" },
+  "username": { "message": "Username" },
+  "noUsername": { "message": "Not set" },
   "filling": { "message": "Filling login fields…" },
   "refreshVault": { "message": "Refresh the signed-in mVault tab, then try again." },
   "noPasswordField": { "message": "No visible password field found." },

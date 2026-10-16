@@ -15,7 +15,7 @@
 
 > **Security note:** mVault has **not been independently audited**. Encryption at rest protects database leaks and backups, but the key lives next to the app, so anyone who controls the running host can read everything. Read [Security](docs/security.md) before storing anything you cannot afford to lose.
 >
-> **Status:** v0.6.0 adds the click-to-fill Chrome extension for password records. The application has run in a homelab since 0.1.0; v0.4.0 was the first public release, so please report anything odd as an issue.
+> **Status:** v0.7.0 improves the click-to-fill Chrome extension with usernames and a scrollable list of matching password records. The application has run in a homelab since 0.1.0; v0.4.0 was the first public release, so please report anything odd as an issue.
 
 mVault keeps a family's sensitive things in one private place: logins, bank cards, environment variables and API keys, JSON documents and scanned files. Everything is organised as *member → project → folder → record*, values are encrypted before they reach the database, and sharing is explicit and read-only. It is a small Django application with an optional click-to-fill Chrome extension; it has no cloud service or telemetry.
 
