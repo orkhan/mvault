@@ -43,7 +43,7 @@ mVault keeps a family's sensitive things in one private place: logins, bank card
 - **Masked values** – passwords, card numbers, CVV, PIN and secret variables are hidden until revealed; reveal and copy actions are written to the audit log.
 - **Custom icons and avatars** – upload an icon per project/folder and a personal avatar. Avatar order: your upload, then your [Gravatar](https://gravatar.com), then your initials.
 - **Sharing** – share a whole project or single records with another member, read-only and live. Recipients can copy a shared record into their own vault.
-- **Chrome autofill** – the [Chrome extension](docs/chrome-extension.md) fills a selected password record's username and password on an exact hostname match. It uses the signed-in mVault session and does not submit forms.
+- **Browser autofill (Chrome for now)** – the [Chrome extension](docs/chrome-extension.md) fills a selected password record's username and password on an exact hostname match. It uses the signed-in mVault session and does not submit forms.
 - **History and audit** – every record keeps its revisions; a paginated activity log shows who did what.
 - **Export everything** – *Settings → Export all data* downloads a ZIP shaped like your tree, with a CSV of decrypted values per folder and file records as the original files. (It contains secrets in plain text; guard it.)
 - **Encryption at rest** – record values, history and attachment metadata are stored as AES-256-GCM ciphertext; see [Security](docs/security.md) for exactly what is and isn't covered.
@@ -69,6 +69,10 @@ docker logs mvault        # prints the first-start admin e-mail and a generated 
 Prefer Compose? Use [`compose.yaml`](compose.yaml): `docker compose up -d`. Back up the `mvault-data` volume: it contains the database, the files **and the encryption key** (see [Backup & restore](docs/backup-restore.md)).
 
 ## Install options
+
+### Chrome extension
+
+Chrome is the only supported browser for now. Download the `mvault-chrome-extension-<version>.zip` asset from the [latest GitHub release](https://github.com/orkhan/mvault/releases/latest), extract it, then open `chrome://extensions`, enable **Developer mode**, and choose **Load unpacked**. Select the extracted folder containing `manifest.json`. Continue with the [extension setup guide](docs/chrome-extension.md) to connect your mVault server.
 
 | Option | Best for | PostgreSQL / MinIO | Guide |
 |---|---|---|---|

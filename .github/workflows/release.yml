@@ -1,8 +1,8 @@
 name: Release
 
-# On a v* tag: verify the tag, build the MinIO binaries from the pinned upstream source and the app
-# tarball, checksum + attest everything, and publish a GitHub release. install.sh and the Proxmox
-# installer download these assets and verify them against SHA256SUMS.
+# On a v* tag: verify the tag, build the MinIO binaries from pinned upstream source, the app tarball
+# and Chrome extension ZIP, checksum + attest everything, and publish a GitHub release. install.sh
+# and the Proxmox installer download these assets and verify them against SHA256SUMS.
 # Container images are published by docker.yml on the same tag.
 
 on:
@@ -78,6 +78,7 @@ jobs:
       - name: Build app tarball, add installer, checksum
         run: |
           scripts/build-release.sh app
+          scripts/build-release.sh extension
           if [ -f install.sh ]; then cp install.sh dist/install.sh; fi
           scripts/build-release.sh checksums
           ls -l dist
@@ -100,6 +101,7 @@ jobs:
           subject-path: |
             dist/minio-*
             dist/mvault-*-app.tar.gz
+            dist/mvault-chrome-extension-*.zip
             dist/SHA256SUMS
       - name: Create GitHub release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
@@ -115,6 +117,7 @@ jobs:
             dist/minio-darwin-amd64
             dist/minio-darwin-arm64
             dist/mvault-${{ needs.verify.outputs.version }}-app.tar.gz
+            dist/mvault-chrome-extension-${{ needs.verify.outputs.version }}.zip
             dist/install.sh
             dist/SHA256SUMS
             dist/licenses/minio-LICENSE

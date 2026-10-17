@@ -2,13 +2,21 @@
 
 The mVault Chrome extension fills a site's username and password after you choose a matching password record. It compares the site's exact hostname with the record's **Website** field. It does not submit the login form.
 
-## Install for development
+## Install from a GitHub release
+
+Chrome is the only supported browser for now.
+
+1. Download `mvault-chrome-extension-<version>.zip` from the [latest mVault release](https://github.com/orkhan/mvault/releases/latest) and extract it.
+2. Open `chrome://extensions` and enable **Developer mode**.
+3. Choose **Load unpacked** and select the extracted folder containing `manifest.json`.
+4. Open the extension on a website, enter your mVault address (for example, `https://vault.example.com`), and choose **Connect**. Chrome asks to let the extension access that mVault host.
+5. Sign in to mVault in the tab it opens. Return to the website and click the extension again.
+6. Review the matching record names and usernames, then choose one to fill the username and password fields. Every accessible password record for the exact hostname is listed; scroll the list if needed.
+
+## Install from the repository for development
 
 1. Open `chrome://extensions` and enable **Developer mode**.
 2. Choose **Load unpacked** and select the repository's `extension/` directory.
-3. Open the extension on a website, enter your mVault address (for example, `https://vault.example.com`), and choose **Connect**. Chrome asks to let the extension access that mVault host.
-4. Sign in to mVault in the tab it opens. Return to the website and click the extension again.
-5. Review the matching record names and usernames, then choose one to fill the username and password fields. Every accessible password record for the exact hostname is listed; scroll the list if needed.
 
 Keep a signed-in mVault tab open while using the extension. It uses that browser session, so there is no separate extension password or long-lived access token. If the session expires, sign in to mVault again. To change servers, choose **Change mVault address** in the extension.
 

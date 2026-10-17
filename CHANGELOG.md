@@ -4,6 +4,9 @@ All notable changes to mVault are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Added
+- A versioned Chrome extension ZIP is available from GitHub releases, with installation steps in the README and extension guide.
+
 ## [0.7.0] - 2026-10-16
 
 ### Changed

@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Build the release assets that install.sh / the Proxmox installer download.
 #
-#   scripts/build-release.sh [--version X.Y.Z] [--out DIR] app|minio|checksums|all
+#   scripts/build-release.sh [--version X.Y.Z] [--out DIR] app|extension|minio|checksums|all
 #
 #   app        dist/mvault-X.Y.Z-app.tar.gz   (arch independent; top-level dir mvault-X.Y.Z/)
+#   extension  dist/mvault-chrome-extension-X.Y.Z.zip (load-unpacked Chrome extension)
 #   minio      dist/minio-{linux,darwin}-{amd64,arm64}   built from the pinned upstream tag + commit
 #              (MINIO_TAG / MINIO_COMMIT are read from the Dockerfile: the single source of truth)
 #   checksums  dist/SHA256SUMS over everything in dist/
@@ -24,7 +25,7 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --version) VERSION="$2"; shift 2 ;;
         --out) OUT="$2"; shift 2 ;;
-        app|minio|checksums|all) CMD="$1"; shift ;;
+        app|extension|minio|checksums|all) CMD="$1"; shift ;;
         -h|--help) sed -n '2,13p' "${BASH_SOURCE[0]}"; exit 0 ;;
         *) die "unknown argument: $1" ;;
     esac
@@ -52,6 +53,10 @@ build_app() {
     COPYFILE_DISABLE=1 tar "${opts[@]}" -C "$stage" -czf "$tarball" "$name"
     rm -rf "$stage"
     echo "built $tarball"
+}
+
+build_extension() {
+    python3 "$ROOT/scripts/build-extension.py" --version "$VERSION" --out "$OUT"
 }
 
 build_minio() {
@@ -95,7 +100,8 @@ checksums() {
 
 case "$CMD" in
     app) build_app ;;
+    extension) build_extension ;;
     minio) build_minio ;;
     checksums) checksums ;;
-    all) build_app; build_minio; copy_installer; checksums ;;
+    all) build_app; build_extension; build_minio; copy_installer; checksums ;;
 esac
