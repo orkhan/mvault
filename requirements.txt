@@ -1,4 +1,4 @@
-Django>=5.2,<6.0
+Django>=6.1.2,<7.0
 psycopg[binary]>=3.2,<4.0
 argon2-cffi>=25.1.0,<26.0
 gunicorn>=26.2.0,<27.0
