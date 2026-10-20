@@ -34,6 +34,7 @@ All tests must pass before you finish. A logged `RuntimeError: down` during test
 - **Icons:** add the name to `ICONS` in `mvault_i18n.py` and a `<symbol id="mv-icon-…">` to `icons.html`.
 - **Storage in tests:** patch `mvault_app.storage.get_storage` with the in-memory `FakeStorage` from `tests.py`; never talk to real S3 or the network in tests. Views must call `storage.get_storage()` via the module so the patch applies.
 - **Settings:** add new env vars in `settings.py` using `env()`; document them in `docs/configuration.md` and `.env.example`.
+- **Branches:** when the maintainer asks for a new feature, start a new `feat/<short-name>` branch from `main` before changing anything (use `fix/…`, `docs/…` and so on for other work); never build a feature directly on `main`.
 - Commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, `release:`; small and focused. When you (a coding agent) did substantial work on a commit, add a `Co-authored-by` trailer so the contribution is credited — `Co-authored-by: Claude <noreply@anthropic.com>` or `Co-authored-by: Codex <codex@users.noreply.github.com>`. The human running you stays the primary author.
 
 ## Rules that must not be broken
