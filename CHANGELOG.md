@@ -4,8 +4,17 @@ All notable changes to mVault are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-20
+
 ### Added
+- Chrome extension 1.2.0 suggests matching logins automatically: when a page with a login form opens and your vault has records for its exact hostname, a card lists them (and the toolbar badge shows the count). Nothing is filled until you click a record.
+- The extension offers to save a login after you sign in or sign up, or to update a changed password. You pick the project and folder, can rename the record, and can choose "Not now" or "Never for this site". Logins already in your vault are not offered again. Two-step logins and single-page apps are handled; passwords captured for a prompt live only in memory for about a minute.
+- Both features are opt-in (a switch in the extension popup that asks for access to all sites) and can be turned off separately; hidden sites can be restored from the popup.
+- Server endpoints `/extension/projects/`, `/extension/save-check/` and `/extension/save/` (member accounts only, owner-only writes, no response caching); saves and updates are written to record history and the activity log.
 - A versioned Chrome extension ZIP is available from GitHub releases, with installation steps in the README and extension guide.
+
+### Changed
+- The extension no longer needs an open mVault tab for lookups: it asks the server with your session cookie and only opens a background tab when you click Fill or Save and no mVault tab is open.
 
 ## [0.7.0] - 2026-10-16
 

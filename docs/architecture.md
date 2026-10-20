@@ -18,13 +18,13 @@ flowchart LR
   S3[(S3-compatible storage<br/>MinIO / S3 / R2 ...)]
   G[gravatar.com]
   U -->|HTTPS| P -->|HTTP| W
-  E -.->|exact-host lookup in signed-in app tab| P
+  E -.->|exact-host lookup, save/update with the signed-in session| P
   W -->|encrypted values| PG
   W -->|icons, avatars, files| S3
   U -.->|avatar lookup, browser only| G
 ```
 
-The optional Chrome extension runs only after the member clicks it. It uses the existing signed-in app tab for same-origin requests, and the app returns credentials only after an exact-host match and the normal record access check. See [Chrome extension](chrome-extension.md).
+The optional Chrome extension rides the member's signed-in browser session: lookups are plain session-cookie requests (or same-origin requests from an open mVault tab), writes always go through an mVault tab so Django's CSRF check applies. The app returns credentials only after an exact-host match and the normal record access check, and the save endpoints write only to records and projects the member owns. See [Chrome extension](chrome-extension.md).
 
 | Component | All-in-one image | Slim image / native / your infra |
 |---|---|---|

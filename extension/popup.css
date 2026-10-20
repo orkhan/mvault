@@ -15,4 +15,13 @@ button:hover { background: #e4ca91; }
 .record-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .record-username { overflow: hidden; color: #3d382c; font-size: 12px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
 .quiet { padding: 7px; background: transparent; color: #aaa99f; font-size: 12px; font-weight: 400; }
+#auto { margin-top: 14px; padding-top: 12px; border-top: 1px solid #33342e; }
+#auto small { display: block; margin: 2px 0 8px 24px; color: #aaa99f; font-size: 11px; }
+.check { display: flex; align-items: flex-start; gap: 8px; margin: 6px 0; color: #f2f0e9; font-size: 13px; cursor: pointer; }
+.check input { width: auto; margin: 2px 0 0; }
+#auto-options { margin-left: 24px; }
+.hidden-sites { display: grid; gap: 4px; margin-top: 8px; }
+.hidden-site { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #c7c5bb; font-size: 12px; }
+.hidden-site span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hidden-site button { width: auto; margin: 0; padding: 2px 8px; background: #2c2d28; color: #f2f0e9; font-size: 11px; font-weight: 400; }
 [hidden] { display: none !important; }
