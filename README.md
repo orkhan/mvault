@@ -15,7 +15,7 @@
 
 > **Security note:** mVault has **not been independently audited**. Encryption at rest protects database leaks and backups, but the key lives next to the app, so anyone who controls the running host can read everything. Read [Security](docs/security.md) before storing anything you cannot afford to lose.
 >
-> **Status:** v0.7.0 improves the click-to-fill Chrome extension with usernames and a scrollable list of matching password records. The application has run in a homelab since 0.1.0; v0.4.0 was the first public release, so please report anything odd as an issue.
+> **Status:** v0.8.0 makes the Chrome extension suggest matching logins automatically and offer to save new or changed logins. The application has run in a homelab since 0.1.0; v0.4.0 was the first public release, so please report anything odd as an issue.
 
 mVault keeps a family's sensitive things in one private place: logins, bank cards, environment variables and API keys, JSON documents and scanned files. Everything is organised as *member → project → folder → record*, values are encrypted before they reach the database, and sharing is explicit and read-only. It is a small Django application with an optional click-to-fill Chrome extension; it has no cloud service or telemetry.
 
@@ -43,7 +43,7 @@ mVault keeps a family's sensitive things in one private place: logins, bank card
 - **Masked values** – passwords, card numbers, CVV, PIN and secret variables are hidden until revealed; reveal and copy actions are written to the audit log.
 - **Custom icons and avatars** – upload an icon per project/folder and a personal avatar. Avatar order: your upload, then your [Gravatar](https://gravatar.com), then your initials.
 - **Sharing** – share a whole project or single records with another member, read-only and live. Recipients can copy a shared record into their own vault.
-- **Browser autofill (Chrome for now)** – the [Chrome extension](docs/chrome-extension.md) fills a selected password record's username and password on an exact hostname match. It uses the signed-in mVault session and does not submit forms.
+- **Browser autofill (Chrome for now)** – the [Chrome extension](docs/chrome-extension.md) suggests matching logins on pages with a login form, fills the one you pick (exact hostname match, never auto-submitted) and offers to save new or changed logins. It uses the signed-in mVault session and is designed to coexist with other password managers.
 - **History and audit** – every record keeps its revisions; a paginated activity log shows who did what.
 - **Export everything** – *Settings → Export all data* downloads a ZIP shaped like your tree, with a CSV of decrypted values per folder and file records as the original files. (It contains secrets in plain text; guard it.)
 - **Encryption at rest** – record values, history and attachment metadata are stored as AES-256-GCM ciphertext; see [Security](docs/security.md) for exactly what is and isn't covered.

@@ -14,6 +14,16 @@ document.querySelector("#vault-address-label").textContent = t("vaultAddress");
 urlField.placeholder = t("urlPlaceholder");
 document.querySelector("#save").textContent = t("connect");
 document.querySelector("#change").textContent = t("changeAddress");
+document.querySelector("#auto-title").textContent = t("autoTitle");
+document.querySelector("#auto-hint").textContent = t("autoHint");
+document.querySelector("#auto-show-label").textContent = t("optSuggest");
+document.querySelector("#auto-save-label").textContent = t("optSave");
+const ALL_SITES = ["https://*/*", "http://*/*"];
+const autoEnabled = document.querySelector("#auto-enabled");
+const autoOptions = document.querySelector("#auto-options");
+const autoShow = document.querySelector("#auto-show");
+const autoSave = document.querySelector("#auto-save");
+const hiddenSites = document.querySelector("#hidden-sites");
 
 function cleanBase(value) {
   const parsed = new URL(value);
@@ -39,52 +49,12 @@ async function loadMatches() {
   const permission = `${new URL(vaultBase).origin}/*`;
   const hasPermission = await chrome.permissions.contains({ origins: [permission] });
   if (!hasPermission) throw new Error(t("reconnect"));
-  const appUrl = `${vaultBase}/dashboard/`;
-  const vaultTabs = await chrome.tabs.query({ url: `${new URL(vaultBase).origin}/*` });
-  const candidates = vaultTabs.filter((tab) => tab.id !== targetTab.id);
-  if (!candidates.length) {
-    await chrome.tabs.create({ url: appUrl, active: false });
-    showMessage(t("signIn"));
+  const result = await MvVault.request(vaultBase, "GET", "/extension/matches/", { hostname: targetUrl.hostname }, { interactive: true, excludeTabId: targetTab.id });
+  if (!result.data) {
+    showMessage(result.error || t("contactError"));
     return;
   }
-
-  let vaultTab;
-  let data;
-  let lastError = t("signInRetry");
-  for (const candidate of candidates) {
-    try {
-      const result = await chrome.scripting.executeScript({
-        target: { tabId: candidate.id },
-        world: "MAIN",
-        func: async (base, hostname, signInRetry, contactError, memberRequired, missingApi) => {
-          const response = await fetch(`${base}/extension/matches/?hostname=${encodeURIComponent(hostname)}`, {
-            credentials: "same-origin",
-            headers: { Accept: "application/json" },
-            cache: "no-store",
-          });
-          if (!response.headers.get("content-type")?.includes("application/json")) {
-            if (response.redirected) return { error: signInRetry };
-            if (response.status === 404) return { error: missingApi };
-            return { error: response.status === 403 ? memberRequired : contactError };
-          }
-          const body = await response.json();
-          if (!response.ok) return { error: body.error || contactError };
-          return body;
-        },
-        args: [vaultBase, targetUrl.hostname, t("signInRetry"), t("contactError"), t("memberAccount"), t("missingApi")],
-      });
-      const candidateData = result[0]?.result;
-      if (Array.isArray(candidateData?.matches)) {
-        vaultTab = candidate;
-        data = candidateData;
-        break;
-      }
-      if (candidateData?.error) lastError = candidateData.error;
-    } catch {
-      lastError = t("contactError");
-    }
-  }
-  if (!vaultTab || !data) throw new Error(lastError);
+  const data = result.data;
   if (!data.matches.length) {
     showMessage(t("noMatches"));
     return;
@@ -100,67 +70,73 @@ async function loadMatches() {
     username.className = "record-username";
     username.textContent = `${t("username")}: ${record.username || t("noUsername")}`;
     button.append(name, username);
-    button.addEventListener("click", () => fillRecord(vaultTab.id, record.id, targetUrl.hostname));
+    button.addEventListener("click", () => fillRecord(record.id, targetUrl.hostname));
     matches.append(button);
   }
 }
 
-async function fillRecord(vaultTabId, recordId, hostname) {
+async function fillRecord(recordId, hostname) {
   try {
     showMessage(t("filling"));
-    const response = await chrome.scripting.executeScript({
-      target: { tabId: vaultTabId },
-      world: "MAIN",
-      func: async (base, id, site, signInRetry, refreshVault, retrievalError) => {
-        const csrf = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/)?.[1];
-        if (!csrf) return { error: refreshVault };
-        const response = await fetch(`${base}/extension/records/${id}/`, {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded", "X-CSRFToken": decodeURIComponent(csrf) },
-          body: new URLSearchParams({ hostname: site }),
-          cache: "no-store",
-        });
-        if (!response.headers.get("content-type")?.includes("application/json")) return { error: signInRetry };
-        const body = await response.json();
-        return response.ok ? body : { error: body.error || retrievalError };
-      },
-      args: [vaultBase, recordId, hostname, t("signInRetry"), t("refreshVault"), t("retrievalError")],
-    });
-    const credential = response[0]?.result;
-    if (!credential || credential.error) throw new Error(credential?.error || t("retrievalError"));
+    const result = await MvVault.request(vaultBase, "POST", `/extension/records/${recordId}/`, { hostname }, { interactive: true, excludeTabId: targetTab.id });
+    if (!result.data) throw new Error(result.error || t("retrievalError"));
+    await chrome.scripting.executeScript({ target: { tabId: targetTab.id }, files: ["fill.js"] });
     const filled = await chrome.scripting.executeScript({
       target: { tabId: targetTab.id },
-      world: "MAIN",
-      func: (username, password, noPasswordField) => {
-        const visible = (element) => {
-          const style = getComputedStyle(element);
-          return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0 && !element.disabled;
-        };
-        const passwords = [...document.querySelectorAll('input[type="password"]')].filter(visible);
-        if (!passwords.length) return { error: noPasswordField };
-        const form = passwords[0].closest("form") || document;
-        const users = [...form.querySelectorAll('input:not([type]), input[type="text"], input[type="email"], input[autocomplete="username"]')].filter(visible);
-        const usernameField = users.find((field) => field.autocomplete === "username" || /user|email|login|account/i.test(`${field.name} ${field.id} ${field.placeholder}`)) || (users.length === 1 ? users[0] : null);
-        const setValue = (field, value) => {
-          const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(field), "value")?.set;
-          if (setter) setter.call(field, value); else field.value = value;
-          field.dispatchEvent(new Event("input", { bubbles: true }));
-          field.dispatchEvent(new Event("change", { bubbles: true }));
-        };
-        if (usernameField && username) setValue(usernameField, username);
-        setValue(passwords[0], password);
-        return { username: Boolean(usernameField && username), password: true };
-      },
-      args: [credential.username, credential.password, t("noPasswordField")],
+      func: (username, password) => globalThis.mvFill(username, password),
+      args: [result.data.username, result.data.password],
     });
-    const result = filled[0]?.result;
-    if (result?.error) throw new Error(result.error);
-    showMessage(result?.username ? t("filledBoth") : t("filledPassword"));
+    const outcome = filled[0]?.result;
+    if (outcome?.error) throw new Error(t(outcome.error));
+    showMessage(outcome?.username ? t("filledBoth") : t("filledPassword"));
   } catch (error) {
     showMessage(error.message || t("fillError"));
   }
 }
+
+async function renderSettings() {
+  const saved = await chrome.storage.local.get({ autoEnabled: false, autoShow: true, autoSave: true, neverShow: [], neverSave: [] });
+  const enabled = saved.autoEnabled && await chrome.permissions.contains({ origins: ALL_SITES });
+  autoEnabled.checked = enabled;
+  autoOptions.hidden = !enabled;
+  autoShow.checked = saved.autoShow;
+  autoSave.checked = saved.autoSave;
+  hiddenSites.replaceChildren();
+  for (const [list, label] of [["neverShow", "hiddenSuggestions"], ["neverSave", "hiddenSaves"]]) {
+    for (const host of saved[list]) {
+      const row = document.createElement("div");
+      row.className = "hidden-site";
+      const name = document.createElement("span");
+      name.textContent = `${host} · ${t(label)}`;
+      const remove = document.createElement("button");
+      remove.textContent = t("remove");
+      remove.addEventListener("click", async () => {
+        await chrome.storage.local.set({ [list]: saved[list].filter((item) => item !== host) });
+        renderSettings();
+      });
+      row.append(name, remove);
+      hiddenSites.append(row);
+    }
+  }
+}
+
+autoEnabled.addEventListener("change", async () => {
+  if (autoEnabled.checked) {
+    if (!await chrome.permissions.request({ origins: ALL_SITES })) {
+      autoEnabled.checked = false;
+      showMessage(t("autoDenied"));
+      return;
+    }
+    await chrome.storage.local.set({ autoEnabled: true });
+    showMessage(t("autoReload"));
+  } else {
+    await chrome.storage.local.set({ autoEnabled: false });
+    await chrome.permissions.remove({ origins: ALL_SITES }).catch(() => {});
+  }
+  renderSettings();
+});
+autoShow.addEventListener("change", () => chrome.storage.local.set({ autoShow: autoShow.checked }));
+autoSave.addEventListener("change", () => chrome.storage.local.set({ autoSave: autoSave.checked }));
 
 document.querySelector("#save").addEventListener("click", async () => {
   try {
@@ -172,6 +148,7 @@ document.querySelector("#save").addEventListener("click", async () => {
     await chrome.storage.local.set({ vaultBase });
     setup.hidden = true;
     content.hidden = false;
+    renderSettings();
     await loadMatches();
   } catch (error) {
     setup.hidden = false;
@@ -196,6 +173,7 @@ document.querySelector("#change").addEventListener("click", async () => {
   vaultBase = saved.vaultBase;
   setup.hidden = true;
   content.hidden = false;
+  renderSettings();
   try { await loadMatches(); }
   catch (error) { showMessage(error.message || t("contactError")); }
 })();

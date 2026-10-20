@@ -18,9 +18,19 @@
         <div class="site" id="site"></div>
         <div id="message" role="status"></div>
         <div id="matches" class="matches"></div>
+        <section id="auto">
+          <label class="check"><input type="checkbox" id="auto-enabled"><span id="auto-title"></span></label>
+          <small id="auto-hint"></small>
+          <div id="auto-options" hidden>
+            <label class="check"><input type="checkbox" id="auto-show"><span id="auto-show-label"></span></label>
+            <label class="check"><input type="checkbox" id="auto-save"><span id="auto-save-label"></span></label>
+            <div id="hidden-sites" class="hidden-sites"></div>
+          </div>
+        </section>
         <button class="quiet" id="change"></button>
       </section>
     </main>
+    <script src="vault-client.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

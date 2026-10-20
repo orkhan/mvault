@@ -28,6 +28,10 @@ This release adds the optional Chrome extension and its authenticated endpoints.
 
 This release adds usernames to the Chrome extension's matching-record list. It has no database migration. Reload the unpacked extension after updating the app.
 
+## Upgrading to 0.8.0
+
+This release adds the extension's save/update endpoints (`/extension/projects/`, `/extension/save-check/`, `/extension/save/`). It has no database migration. Update the mVault app first, then reload the unpacked extension (`chrome://extensions` → reload) or install the new ZIP; automatic suggestions and save prompts stay off until you enable them in the extension popup.
+
 ## Upgrading from 0.3.x (homelab / pre-release deployments) to 0.4
 
 0.4 makes the app configurable for everyone, which changed some defaults that used to be deployment-specific. If you ran the 0.2/0.3 compose files, set these **before** starting the new image:

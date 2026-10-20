@@ -115,7 +115,9 @@ Status legend: `[ ]` todo, `[x]` done.
 - [x] Manifest V3 Chrome extension with user-initiated fill, exact-host matching, scoped host permission, and seven interface locales
 - [x] Authenticated mVault endpoints list all accessible exact-host password matches with usernames and return selected credentials only after server-side access and hostname checks; successful fills are audited
 - [x] Document setup and security; cover owner, shared-record, and exact-host access in tests
-- [ ] Manually smoke test the unpacked extension in Chrome against a local mVault instance
+- [x] Manually smoke test the unpacked extension in Chrome against a local mVault instance — automated Chromium run against a local mVault covers suggestions, fill, save, update and the opt-out paths (0.8.0)
+- [x] 0.8.0: automatic suggestions on login pages and save/update prompts after login (opt-in, coexists with other password managers), with `/extension/projects/`, `/extension/save-check/` and `/extension/save/`
+- [ ] Verify 0.8.0 on the maintainer's homelab with real sites and other password managers installed
 
 ## Risks and decisions (resolved 2026-10-11)
 
