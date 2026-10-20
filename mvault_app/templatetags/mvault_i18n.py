@@ -31,6 +31,7 @@ ACTIVITY_LABELS = {
     "value_reveal": "Revealed value", "value_copy": "Copied value",
     "env_exported": "Exported environment file", "file_downloaded": "Downloaded file", "data_exported": "Exported all data",
     "extension_credential_filled": "Filled credentials from extension",
+    "extension_credential_saved": "Saved login from extension", "extension_credential_updated": "Updated password from extension",
 }
 
 
@@ -221,6 +222,8 @@ RU = {
     "Download a ZIP with all your projects and folders as directories, a CSV with decrypted values in each, and file records as the original files. Keep it somewhere safe: it contains your secrets in plain text.": "Скачайте ZIP-архив: проекты и папки в виде каталогов, в каждом CSV с расшифрованными значениями, а файловые записи — в виде исходных файлов. Храните его надёжно: в нём ваши секреты в открытом виде.",
     "JSON": "JSON", "Files": "Файлы", "File": "Файл", "Download": "Скачать", "Downloaded file": "Скачан файл",
     "Filled credentials from extension": "Заполнены данные для входа из расширения",
+    "Saved login from extension": "Вход сохранён из расширения",
+    "Updated password from extension": "Пароль обновлён из расширения",
     "Format": "Форматировать", "Minify": "Сжать", "Valid JSON": "Корректный JSON",
     "Current file": "Текущий файл", "Choose a new file to replace it.": "Выберите новый файл, чтобы заменить его.",
     "File (max 50 MB)": "Файл (макс. 50 МБ)", "Choose a file to upload.": "Выберите файл для загрузки.",

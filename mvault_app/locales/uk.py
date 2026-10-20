@@ -22,6 +22,8 @@ STRINGS = {
     "Download": "Завантажити",
     "Downloaded file": "Файл завантажено",
     "Filled credentials from extension": "Дані для входу заповнено з розширення",
+    "Saved login from extension": "Дані для входу збережено з розширення",
+    "Updated password from extension": "Пароль оновлено з розширення",
     "Format": "Форматувати",
     "Minify": "Мінімізувати",
     "Valid JSON": "Коректний JSON",
