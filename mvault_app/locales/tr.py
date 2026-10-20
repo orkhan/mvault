@@ -22,6 +22,8 @@ STRINGS = {
     "Download": "İndir",
     "Downloaded file": "Dosya indirildi",
     "Filled credentials from extension": "Giriş bilgileri eklentiden dolduruldu",
+    "Saved login from extension": "Giriş bilgileri eklentiden kaydedildi",
+    "Updated password from extension": "Parola eklentiden güncellendi",
     "Format": "Biçimlendir",
     "Minify": "Küçült",
     "Valid JSON": "Geçerli JSON",

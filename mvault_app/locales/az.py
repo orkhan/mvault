@@ -22,6 +22,8 @@ STRINGS = {
     "Download": "Yüklə",
     "Downloaded file": "Fayl yükləndi",
     "Filled credentials from extension": "Giriş məlumatları genişlənmədən dolduruldu",
+    "Saved login from extension": "Giriş genişlənmədən saxlanıldı",
+    "Updated password from extension": "Parol genişlənmədən yeniləndi",
     "Format": "Formatla",
     "Minify": "Sıxlaşdır",
     "Valid JSON": "Düzgün JSON",

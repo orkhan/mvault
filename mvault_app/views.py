@@ -1,4 +1,5 @@
 import csv
+import hmac
 import io
 import logging
 import os
@@ -848,6 +849,31 @@ def _extension_hostname(value):
     return hostname
 
 
+def _record_hostname(record):
+    """Canonical hostname of a record's Website field, or an empty string."""
+    website = str(record.data.get("website", "")).strip()
+    if not website:
+        return ""
+    try:
+        return _extension_hostname(urlsplit(website if "://" in website else f"https://{website}").hostname)
+    except ValueError:
+        return ""
+
+
+def _extension_json(payload, status=200):
+    response = JsonResponse(payload, status=status)
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+def _accessible_password_records(user):
+    return Record.objects.filter(record_type="password", is_deleted=False, project__is_deleted=False).exclude(folder__is_deleted=True).filter(
+        Q(owner=user) |
+        Q(project__shares__recipient=user, project__shares__revoked_at__isnull=True, project__owner__is_active=True) |
+        Q(shares__recipient=user, shares__revoked_at__isnull=True, owner__is_active=True)
+    ).select_related("project", "folder", "owner").distinct().order_by("name", "pk")
+
+
 @member_required
 @require_GET
 def extension_matches(request):
@@ -855,26 +881,9 @@ def extension_matches(request):
     hostname = _extension_hostname(request.GET.get("hostname"))
     if not hostname:
         return JsonResponse({"error": "Invalid hostname."}, status=400)
-    records = Record.objects.filter(record_type="password", is_deleted=False, project__is_deleted=False).exclude(folder__is_deleted=True).filter(
-        Q(owner=request.user) |
-        Q(project__shares__recipient=request.user, project__shares__revoked_at__isnull=True, project__owner__is_active=True) |
-        Q(shares__recipient=request.user, shares__revoked_at__isnull=True, owner__is_active=True)
-    ).select_related("project", "folder", "owner").distinct().order_by("name", "pk")
-    matches = []
-    for record in records:
-        website = str(record.data.get("website", "")).strip()
-        if not website:
-            continue
-        try:
-            parsed = urlsplit(website if "://" in website else f"https://{website}")
-            match = _extension_hostname(parsed.hostname)
-        except ValueError:
-            match = ""
-        if match == hostname:
-            matches.append({"id": record.pk, "name": record.name, "username": str(record.data.get("username") or "")})
-    response = JsonResponse({"matches": matches})
-    response["Cache-Control"] = "no-store"
-    return response
+    matches = [{"id": record.pk, "name": record.name, "username": str(record.data.get("username") or "")}
+               for record in _accessible_password_records(request.user) if _record_hostname(record) == hostname]
+    return _extension_json({"matches": matches})
 
 
 @member_required
@@ -889,18 +898,107 @@ def extension_credential(request, record_id):
         pk=record_id, record_type="password", is_deleted=False, project__is_deleted=False,
     )
     allowed, _shared = record_accessible(request.user, record)
-    website = str(record.data.get("website", "")).strip()
-    try:
-        parsed = urlsplit(website if "://" in website else f"https://{website}")
-        match = _extension_hostname(parsed.hostname)
-    except ValueError:
-        match = ""
-    if not allowed or not website or match != hostname:
+    if not allowed or _record_hostname(record) != hostname:
         raise Http404
     record_audit(request.user, record.owner, "extension_credential_filled", record=record, details={"hostname": hostname})
-    response = JsonResponse({"username": str(record.data.get("username") or ""), "password": str(record.data.get("password") or "")})
-    response["Cache-Control"] = "no-store"
-    return response
+    return _extension_json({"username": str(record.data.get("username") or ""), "password": str(record.data.get("password") or "")})
+
+
+def _post_id(request, key):
+    value = request.POST.get(key, "")
+    return int(value) if value.isascii() and value.isdigit() and len(value) < 18 else 0
+
+
+def _same_secret(left, right):
+    return hmac.compare_digest(str(left).encode(), str(right).encode())
+
+
+def _extension_login(request):
+    """Validated (hostname, username, password) of a captured login, or None."""
+    hostname = _extension_hostname(request.POST.get("hostname"))
+    username = request.POST.get("username", "").strip()
+    password = request.POST.get("password", "")
+    if not hostname or not password or len(username) > 255 or len(password) > 1024:
+        return None
+    return hostname, username, password
+
+
+def _extension_save_targets(user):
+    projects = Project.objects.filter(owner=user, project_type="password_vault", is_deleted=False).prefetch_related(
+        Prefetch("folders", queryset=Folder.objects.filter(is_deleted=False), to_attr="active_folders"))
+    return [{"id": p.pk, "name": p.name, "folders": [{"id": f.pk, "name": f.name} for f in p.active_folders]} for p in projects]
+
+
+@member_required
+@require_GET
+def extension_projects(request):
+    """Projects (with folders) where the member can save a new password record."""
+    return _extension_json({"projects": _extension_save_targets(request.user)})
+
+
+@member_required
+@require_POST
+def extension_save_check(request):
+    """Tell the extension whether a captured login is already saved, changed or new. Stores nothing."""
+    login_data = _extension_login(request)
+    if login_data is None:
+        return JsonResponse({"error": "Invalid login."}, status=400)
+    hostname, username, password = login_data
+    candidates = [r for r in _accessible_password_records(request.user)
+                  if _record_hostname(r) == hostname and str(r.data.get("username") or "").strip().lower() == username.lower()]
+    if any(_same_secret(r.data.get("password") or "", password) for r in candidates):
+        return _extension_json({"state": "exists"})
+    owned = next((r for r in candidates if r.owner_id == request.user.pk), None)
+    if owned:
+        return _extension_json({"state": "update", "record": {"id": owned.pk, "name": owned.name, "username": str(owned.data.get("username") or "")}})
+    return _extension_json({"state": "new", "projects": _extension_save_targets(request.user)})
+
+
+def _unique_record_name(project, folder, base):
+    taken = {n.lower() for n in Record.objects.filter(project=project, folder=folder, is_deleted=False).values_list("name", flat=True)}
+    base = base[:150]
+    if base.lower() not in taken:
+        return base
+    return next(f"{base} {n}" for n in range(2, 1000) if f"{base} {n}".lower() not in taken)
+
+
+@member_required
+@require_POST
+def extension_save(request):
+    """Create a password record, or update the password of an owned one, from a login the member confirmed."""
+    login_data = _extension_login(request)
+    mode = request.POST.get("mode")
+    if login_data is None or mode not in {"create", "update"}:
+        return JsonResponse({"error": "Invalid login."}, status=400)
+    hostname, username, password = login_data
+    if mode == "update":
+        record = get_object_or_404(Record.objects.select_related("project", "folder").exclude(folder__is_deleted=True),
+                                   pk=_post_id(request, "record_id"), owner=request.user, record_type="password", is_deleted=False, project__is_deleted=False)
+        if _record_hostname(record) != hostname or str(record.data.get("username") or "").strip().lower() != username.lower():
+            raise Http404
+        with transaction.atomic():
+            save_revision(record, request.user)
+            record.data = {**record.data, "password": password}
+            record.save()
+        record_audit(request.user, request.user, "extension_credential_updated", record=record, details={"hostname": hostname})
+        return _extension_json({"id": record.pk, "name": record.name, "action": "updated"})
+    project = get_object_or_404(Project, pk=_post_id(request, "project_id"), owner=request.user, project_type="password_vault", is_deleted=False)
+    folder = get_object_or_404(Folder, pk=_post_id(request, "folder_id"), project=project, is_deleted=False) if request.POST.get("folder_id") else None
+    name = request.POST.get("name", "").strip()
+    if len(name) > 160:
+        return JsonResponse({"error": "Invalid login."}, status=400)
+    if name:
+        if Record.objects.filter(project=project, folder=folder, name__iexact=name, is_deleted=False).exists():
+            return JsonResponse({"error": "An active record with this name already exists in this location."}, status=409)
+    else:
+        name = _unique_record_name(project, folder, hostname)
+    scheme = "http" if request.POST.get("scheme") == "http" else "https"
+    with transaction.atomic():
+        record = Record.objects.create(owner=request.user, project=project, folder=folder, record_type="password", name=name,
+                                       data={"username": username, "password": password, "website": f"{scheme}://{hostname}", "notes": ""})
+        save_revision(record, request.user)
+    record_audit(request.user, request.user, "extension_credential_saved", record=record, details={"hostname": hostname})
+    return _extension_json({"id": record.pk, "name": record.name, "action": "created"}, status=201)
 
 @member_required
 @require_POST

@@ -44,4 +44,7 @@ urlpatterns = [
     path("records/<int:record_id>/value/", views.record_value_action, name="record_value_action"),
     path("extension/matches/", views.extension_matches, name="extension_matches"),
     path("extension/records/<int:record_id>/", views.extension_credential, name="extension_credential"),
+    path("extension/projects/", views.extension_projects, name="extension_projects"),
+    path("extension/save-check/", views.extension_save_check, name="extension_save_check"),
+    path("extension/save/", views.extension_save, name="extension_save"),
 ]

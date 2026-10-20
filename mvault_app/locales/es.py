@@ -22,6 +22,8 @@ STRINGS = {
     "Download": "Descargar",
     "Downloaded file": "Archivo descargado",
     "Filled credentials from extension": "Credenciales rellenadas desde la extensión",
+    "Saved login from extension": "Inicio de sesión guardado desde la extensión",
+    "Updated password from extension": "Contraseña actualizada desde la extensión",
     "Format": "Formatear",
     "Minify": "Minificar",
     "Valid JSON": "JSON válido",

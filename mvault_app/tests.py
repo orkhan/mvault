@@ -56,6 +56,107 @@ class MvaultWorkflowTests(TestCase):
         self.assertEqual(credential.status_code, 200)
         self.assertEqual(credential.json()["username"], "alex")
 
+    def save_check(self, **data):
+        return self.client.post(reverse("extension_save_check"), {"hostname": "example.test", "username": "alex", "password": "p@ssword", **data})
+
+    def test_extension_save_check_reports_exists_update_or_new_without_echoing_passwords(self):
+        self.client.force_login(self.alex)
+        exists = self.save_check(username="ALEX")
+        self.assertEqual(exists.json(), {"state": "exists"})
+        self.assertEqual(exists["Cache-Control"], "no-store")
+        update = self.save_check(password="new-secret-value")
+        self.assertEqual(update.json(), {"state": "update", "record": {"id": self.record.pk, "name": "Mail", "username": "alex"}})
+        self.assertNotIn("new-secret-value", update.content.decode())
+        new = self.save_check(username="other", password="brand-new-secret").json()
+        self.assertEqual(new["state"], "new")
+        self.assertEqual(new["projects"], [{"id": self.project.pk, "name": "Passwords", "folders": [{"id": self.folder.pk, "name": "Work"}]}])
+        self.assertEqual(self.save_check(hostname="other.test").json()["state"], "new")
+        for bad in ({"hostname": "bad host/"}, {"password": ""}, {"password": "x" * 1025}, {"username": "u" * 256}):
+            self.assertEqual(self.save_check(**bad).status_code, 400)
+        self.assertEqual(self.client.get(reverse("extension_save_check")).status_code, 405)
+        listed = self.client.get(reverse("extension_projects"))
+        self.assertEqual(listed.json(), {"projects": new["projects"]})
+        self.assertEqual(listed["Cache-Control"], "no-store")
+        self.client.force_login(self.sam)
+        self.assertEqual(self.client.get(reverse("extension_projects")).json(), {"projects": []})
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get(reverse("extension_projects")).status_code, 403)
+
+    def test_extension_save_check_does_not_offer_to_update_a_shared_record_or_leak_other_members_data(self):
+        self.client.force_login(self.alex)
+        self.client.post(reverse("share_create", args=["record", self.record.pk]), {"recipient": self.sam.pk})
+        self.client.force_login(self.sam)
+        self.assertEqual(self.save_check().json(), {"state": "exists"})
+        self.assertEqual(self.save_check(password="different-secret").json(), {"state": "new", "projects": []})
+        self.client.force_login(self.admin)
+        self.assertEqual(self.save_check().status_code, 403)
+
+    def test_extension_save_creates_an_encrypted_password_record_with_revision_and_audit(self):
+        self.client.force_login(self.alex)
+        url = reverse("extension_save")
+        data = {"mode": "create", "hostname": "New.Example.test", "username": "alex", "password": "fresh-secret", "project_id": self.project.pk, "folder_id": self.folder.pk, "scheme": "http"}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 201)
+        record = Record.objects.get(pk=response.json()["id"])
+        self.assertEqual((record.name, record.folder, record.owner), ("new.example.test", self.folder, self.alex))
+        self.assertEqual(record.data, {"username": "alex", "password": "fresh-secret", "website": "http://new.example.test", "notes": ""})
+        self.assertTrue(record.revisions.exists())
+        self.assertTrue(AuditEvent.objects.filter(actor=self.alex, record=record, action="extension_credential_saved").exists())
+        self.assertNotIn("fresh-secret", str(AuditEvent.objects.filter(record=record).values_list("details", flat=True)))
+        self.assertEqual(self.client.post(reverse("extension_credential", args=[record.pk]), {"hostname": "new.example.test"}).json()["password"], "fresh-secret")
+        second = self.client.post(url, data).json()
+        self.assertEqual(second["name"], "new.example.test 2")
+        self.assertEqual(self.client.post(url, {**data, "name": "NEW.example.test"}).status_code, 409)
+        self.assertEqual(self.client.post(url, {**data, "name": "Custom name"}).json()["name"], "Custom name")
+
+    def test_extension_save_rejects_foreign_or_wrong_type_targets_and_bad_input(self):
+        sam_project = Project.objects.create(owner=self.sam, name="Sam", project_type="password_vault")
+        sam_folder = Folder.objects.create(project=sam_project, name="Private")
+        cards = Project.objects.create(owner=self.alex, name="Cards", project_type="bank_cards_vault")
+        self.client.force_login(self.alex)
+        url = reverse("extension_save")
+        base = {"mode": "create", "hostname": "new.example.test", "username": "alex", "password": "fresh-secret", "project_id": self.project.pk}
+        self.assertEqual(self.client.post(url, {**base, "project_id": sam_project.pk}).status_code, 404)
+        self.assertEqual(self.client.post(url, {**base, "project_id": cards.pk}).status_code, 404)
+        self.assertEqual(self.client.post(url, {**base, "folder_id": sam_folder.pk}).status_code, 404)
+        self.assertEqual(self.client.post(url, {**base, "project_id": "abc"}).status_code, 404)
+        self.assertEqual(self.client.post(url, {**base, "folder_id": "²"}).status_code, 404)
+        self.assertEqual(self.client.post(url, {**base, "name": "n" * 161}).status_code, 400)
+        self.assertEqual(self.client.post(url, {**base, "mode": "delete"}).status_code, 400)
+        self.assertEqual(self.client.post(url, {**base, "password": ""}).status_code, 400)
+        self.assertFalse(Record.objects.filter(name="new.example.test").exists())
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.post(url, base).status_code, 403)
+
+    def test_extension_save_updates_only_an_owned_host_and_username_matching_password(self):
+        self.client.force_login(self.alex)
+        url = reverse("extension_save")
+        data = {"mode": "update", "hostname": "example.test", "username": "Alex", "password": "rotated-secret", "record_id": self.record.pk}
+        self.assertEqual(self.client.post(url, {**data, "hostname": "other.test"}).status_code, 404)
+        self.assertEqual(self.client.post(url, {**data, "username": "someone"}).status_code, 404)
+        response = self.client.post(url, data)
+        self.assertEqual((response.status_code, response.json()["action"]), (200, "updated"))
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.data, {"username": "alex", "password": "rotated-secret", "website": "https://example.test", "notes": "primary"})
+        self.assertEqual(self.record.revisions.latest("pk").snapshot["data"]["password"], "p@ssword")
+        self.assertTrue(AuditEvent.objects.filter(actor=self.alex, record=self.record, action="extension_credential_updated").exists())
+        self.client.post(reverse("share_create", args=["record", self.record.pk]), {"recipient": self.sam.pk})
+        self.client.force_login(self.sam)
+        self.assertEqual(self.client.post(url, {**data, "password": "hijack-secret"}).status_code, 404)
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.data["password"], "rotated-secret")
+
+    def test_extension_locales_and_manifest_are_consistent(self):
+        import json
+        from pathlib import Path
+        root = Path(__file__).resolve().parent.parent / "extension"
+        manifest = json.loads((root / "manifest.json").read_text())
+        self.assertEqual(manifest["manifest_version"], 3)
+        keys = {path.parent.name: set(json.loads(path.read_text())) for path in (root / "_locales").glob("*/messages.json")}
+        self.assertEqual(set(keys), {"az", "be", "en", "es", "ru", "tr", "uk"})
+        for code, found in keys.items():
+            self.assertEqual(found, keys["en"], code)
+
     def test_member_layout_uses_full_width_sidebar_icons_and_places_version_after_logout(self):
         self.client.force_login(self.alex)
         response = self.client.get(reverse("dashboard"))
@@ -937,7 +1038,7 @@ class ExportAllTests(TestCase):
     def test_export_button_on_settings_and_version(self):
         page = self.client.get(reverse("settings"))
         self.assertContains(page, reverse("export_all"))
-        self.assertContains(page, "version 0.7.0")
+        self.assertContains(page, "version 0.8.0")
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
