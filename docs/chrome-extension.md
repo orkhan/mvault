@@ -6,7 +6,7 @@ The mVault Chrome extension works with your signed-in mVault in three ways:
 - **Automatic suggestions** (opt-in): when a page with a login form opens and your vault has password records for the site's exact hostname, a small card lists them and the toolbar icon shows the count. Nothing is filled until you click a record.
 - **Save prompts** (opt-in): after you sign in or sign up on a site, the extension offers to save the login to mVault, or to update the password if it changed.
 
-Matching compares the site's exact hostname with the record's **Website** field. A record whose Website is `https://…` (or has no scheme) is never offered or filled on a plain `http://` page of the same host, and an explicit port in the Website must match the page. Records saved for `http://` still fill on `https://`. (Extensions older than 1.3.0 do not send the page scheme and keep hostname-only matching; update them.)
+Matching compares the site's exact hostname with the record's **Website** field. A record whose Website is `https://…` (or has no scheme) is never offered or filled on a plain `http://` page of the same host, and an explicit port in the Website must match the page. Records saved for `http://` still fill on `https://` (and on `http://`): earlier versions stored a Website typed without a scheme as `http://`, so check older records. (Extensions older than 1.3.0 do not send the page scheme and keep hostname-only matching; update them.)
 
 ## Install from a GitHub release
 
