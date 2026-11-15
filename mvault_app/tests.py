@@ -1368,3 +1368,28 @@ class ExportReauthTests(TestCase):
         ok = self.client.post(reverse("export_all"), {"current_password": "Secure-Password-2026!"})
         self.assertEqual(ok["Content-Type"], "application/zip")
         self.assertTrue(AuditEvent.objects.filter(action="data_exported").exists())
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class AuditCoverageTests(TestCase):
+    def setUp(self):
+        self.alex = User.objects.create_user("alex@example.test", "Secure-Password-2026!", "Alex Member")
+        self.sam = User.objects.create_user("sam@example.test", "Secure-Password-2026!", "Sam Member")
+        self.project = Project.objects.create(owner=self.alex, name="Passwords", project_type="password_vault")
+        self.record = Record.objects.create(owner=self.alex, project=self.project, record_type="password", name="Mail", data={"password": "p@ssword"})
+        self.client.force_login(self.alex)
+
+    def test_revoking_shares_is_audited(self):
+        record_share = RecordShare.objects.create(record=self.record, recipient=self.sam, created_by=self.alex)
+        project_share = ProjectShare.objects.create(project=self.project, recipient=self.sam, created_by=self.alex)
+        self.client.post(reverse("share_revoke", args=["record", record_share.pk]))
+        self.client.post(reverse("share_revoke", args=["project", project_share.pk]))
+        events = AuditEvent.objects.filter(action="share_revoked", actor=self.alex)
+        self.assertEqual(events.count(), 2)
+        self.assertTrue(events.filter(record=self.record, details__recipient="sam@example.test").exists())
+        self.assertTrue(events.filter(project=self.project, record__isnull=True).exists())
+
+    def test_viewing_record_history_is_audited(self):
+        self.assertEqual(self.client.get(reverse("record_history", args=[self.record.pk])).status_code, 200)
+        self.assertTrue(AuditEvent.objects.filter(action="record_history_viewed", record=self.record).exists())
+        self.assertEqual(self.client.get(reverse("audit_log")).status_code, 200)

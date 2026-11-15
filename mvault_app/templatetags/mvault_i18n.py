@@ -29,6 +29,7 @@ ACTIVITY_LABELS = {
     "record_import_updated": "Updated imported record", "record_copied": "Copied record",
     "record_shared": "Shared record", "shared_record_viewed": "Viewed shared record",
     "value_reveal": "Revealed value", "value_copy": "Copied value",
+    "share_revoked": "Revoked share", "record_history_viewed": "Viewed record history",
     "env_exported": "Exported environment file", "file_downloaded": "Downloaded file", "data_exported": "Exported all data",
     "extension_credential_filled": "Filled credentials from extension",
     "extension_credential_saved": "Saved login from extension", "extension_credential_updated": "Updated password from extension",

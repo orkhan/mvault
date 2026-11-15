@@ -10,6 +10,7 @@ All notable changes to mVault are documented here. The format follows [Keep a Ch
 - Changing your e-mail address (your sign-in name) in *Settings* now asks for your current password and checks that the address is valid.
 - Sign-in throttling no longer lets anyone who knows a member's e-mail lock them out: the tight limit now counts failures per e-mail *and* client address. Looser per-address (4×) and per-e-mail (10×) limits remain against spraying and distributed guessing.
 - *Settings → Export all data* asks for your current password, since the ZIP holds every secret in plain text.
+- Revoking a project or record share and opening a record's history (which shows past values unmasked) are now written to the activity log.
 
 ## [0.8.0] - 2026-10-20
 

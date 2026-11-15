@@ -622,6 +622,7 @@ def folder_delete(request, folder_id):
 def record_history(request, record_id):
     record = get_object_or_404(Record, pk=record_id, owner=request.user)
     revisions = record.revisions.select_related("actor")
+    record_audit(request.user, request.user, "record_history_viewed", record=record)  # revisions show past secrets unmasked
     return render(request, "mvault/history.html", {"record": record, "revisions": revisions})
 
 @member_required
@@ -1027,6 +1028,8 @@ def share_revoke(request, kind, share_id):
         raise Http404
     grant.revoked_at = timezone.now()
     grant.save(update_fields=["revoked_at"])
+    record_audit(request.user, request.user, "share_revoked", record=grant.record if kind == "record" else None,
+                 project=grant.project if kind == "project" else None, details={"recipient": grant.recipient.email})
     messages.success(request, "Share revoked.")
     return redirect("project_detail", project_id=grant.project_id) if kind == "project" else redirect("record_detail", record_id=grant.record_id)
 
