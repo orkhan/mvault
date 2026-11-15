@@ -1324,3 +1324,28 @@ class EmailChangeTests(TestCase):
         self.save(full_name="Alex Renamed", preferred_language="ru")
         self.alex.refresh_from_db()
         self.assertEqual((self.alex.full_name, self.alex.preferred_language), ("Alex Renamed", "ru"))
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"], LOGIN_MAX_ATTEMPTS=3, TRUST_PROXY_HEADERS=False)
+class LockoutTests(TestCase):
+    def setUp(self):
+        self.alex = User.objects.create_user("alex@example.test", "Secure-Password-2026!", "Alex Member")
+
+    def attempt(self, password, ip, email="alex@example.test"):
+        return self.client.post(reverse("login"), {"username": email, "password": password}, REMOTE_ADDR=ip)
+
+    def test_failures_from_one_address_do_not_lock_the_member_out_elsewhere(self):
+        for _ in range(3):
+            self.attempt("wrong", "203.0.113.9")
+        self.assertEqual(self.attempt("Secure-Password-2026!", "203.0.113.9").status_code, 429)
+        self.assertEqual(self.attempt("Secure-Password-2026!", "198.51.100.7").status_code, 302)
+
+    def test_guessing_one_account_from_many_addresses_is_still_limited(self):
+        for i in range(30):
+            self.attempt("wrong", f"192.0.2.{i}")
+        self.assertEqual(self.attempt("Secure-Password-2026!", "198.51.100.7").status_code, 429)
+
+    def test_spraying_many_accounts_from_one_address_is_limited(self):
+        for i in range(12):
+            self.attempt("wrong", "203.0.113.9", email=f"user{i}@example.test")
+        self.assertEqual(self.attempt("Secure-Password-2026!", "203.0.113.9").status_code, 429)

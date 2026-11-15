@@ -65,7 +65,7 @@ Limits (compiled in): file records 50 MB, icons and avatars 2 MB.
 |---|---|---|---|
 | `MVAULT_ADMIN_EMAIL` | `admin@mvault.local` | ○ | E-mail of the administrator. Created at start if missing; start-up stops with an error if a member account already uses this address (members are never promoted). **Set this to your existing admin address when upgrading from 0.3.x.** |
 | `MVAULT_ADMIN_PASSWORD` | – | ◐ | Password for the first administrator; required on first start of the slim image (the all-in-one image generates one). Ignored once the admin exists. |
-| `MVAULT_LOGIN_MAX_ATTEMPTS` | `5` | ○ | Failed sign-ins per e-mail within the window before sign-in is blocked (HTTP 429). The per-address limit is 4× this value. |
+| `MVAULT_LOGIN_MAX_ATTEMPTS` | `5` | ○ | Failed sign-ins for one e-mail from one client address within the window before sign-in from that address is blocked (HTTP 429). Looser limits apply per address (4× this value, across all e-mails) and per e-mail (10× this value, across all addresses). |
 | `MVAULT_LOGIN_WINDOW_SECONDS` | `900` | ○ | Length of the throttling window. |
 | `MVAULT_TRUST_PROXY` | `true` | ○ | Use the rightmost `X-Forwarded-For` entry (appended by your proxy) as the client address for throttling. Set `false` if mVault is reachable without a proxy. |
 
