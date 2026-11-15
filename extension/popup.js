@@ -49,7 +49,7 @@ async function loadMatches() {
   const permission = `${new URL(vaultBase).origin}/*`;
   const hasPermission = await chrome.permissions.contains({ origins: [permission] });
   if (!hasPermission) throw new Error(t("reconnect"));
-  const result = await MvVault.request(vaultBase, "GET", "/extension/matches/", { hostname: targetUrl.hostname }, { interactive: true, excludeTabId: targetTab.id });
+  const result = await MvVault.request(vaultBase, "GET", "/extension/matches/", { hostname: targetUrl.hostname, scheme: targetUrl.protocol.slice(0, -1), port: targetUrl.port }, { interactive: true, excludeTabId: targetTab.id });
   if (!result.data) {
     showMessage(result.error || t("contactError"));
     return;
@@ -70,15 +70,15 @@ async function loadMatches() {
     username.className = "record-username";
     username.textContent = `${t("username")}: ${record.username || t("noUsername")}`;
     button.append(name, username);
-    button.addEventListener("click", () => fillRecord(record.id, targetUrl.hostname));
+    button.addEventListener("click", () => fillRecord(record.id, targetUrl));
     matches.append(button);
   }
 }
 
-async function fillRecord(recordId, hostname) {
+async function fillRecord(recordId, pageUrl) {
   try {
     showMessage(t("filling"));
-    const result = await MvVault.request(vaultBase, "POST", `/extension/records/${recordId}/`, { hostname }, { interactive: true, excludeTabId: targetTab.id });
+    const result = await MvVault.request(vaultBase, "POST", `/extension/records/${recordId}/`, { hostname: pageUrl.hostname, scheme: pageUrl.protocol.slice(0, -1), port: pageUrl.port }, { interactive: true, excludeTabId: targetTab.id });
     if (!result.data) throw new Error(result.error || t("retrievalError"));
     await chrome.scripting.executeScript({ target: { tabId: targetTab.id }, files: ["fill.js"] });
     const filled = await chrome.scripting.executeScript({

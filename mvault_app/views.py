@@ -877,6 +877,40 @@ def _record_hostname(record):
         return ""
 
 
+DEFAULT_PORTS = {"http": "80", "https": "443"}
+
+
+def _page_origin(params):
+    """(scheme, port) of the page the extension acts on; scheme is None for extensions older than 1.3.0."""
+    scheme = params.get("scheme")
+    port = params.get("port", "")
+    if scheme not in DEFAULT_PORTS:
+        return None, ""
+    if not (port.isascii() and port.isdigit() and 0 < int(port) < 65536):
+        port = ""
+    return scheme, port or DEFAULT_PORTS[scheme]
+
+
+def _origin_allows(record, page):
+    """Never hand an https login to a plain-http page, and honour an explicit port in the Website field.
+
+    The hostname has already matched. A network attacker can serve http://<host> but not https://<host>, so
+    a record saved for https must not be offered there. Records saved for http may still fill on https.
+    """
+    scheme, port = page
+    if scheme is None:
+        return True
+    website = str(record.data.get("website", "")).strip()
+    try:
+        parts = urlsplit(website if "://" in website else f"https://{website}")
+        record_port = parts.port
+    except ValueError:
+        return False
+    if parts.scheme.lower() != "http" and scheme != "https":
+        return False
+    return record_port is None or str(record_port) == port
+
+
 def _extension_json(payload, status=200):
     response = JsonResponse(payload, status=status)
     response["Cache-Control"] = "no-store"
@@ -898,8 +932,9 @@ def extension_matches(request):
     hostname = _extension_hostname(request.GET.get("hostname"))
     if not hostname:
         return JsonResponse({"error": "Invalid hostname."}, status=400)
+    page = _page_origin(request.GET)
     matches = [{"id": record.pk, "name": record.name, "username": str(record.data.get("username") or "")}
-               for record in _accessible_password_records(request.user) if _record_hostname(record) == hostname]
+               for record in _accessible_password_records(request.user) if _record_hostname(record) == hostname and _origin_allows(record, page)]
     return _extension_json({"matches": matches})
 
 
@@ -915,7 +950,7 @@ def extension_credential(request, record_id):
         pk=record_id, record_type="password", is_deleted=False, project__is_deleted=False,
     )
     allowed, _shared = record_accessible(request.user, record)
-    if not allowed or _record_hostname(record) != hostname:
+    if not allowed or _record_hostname(record) != hostname or not _origin_allows(record, _page_origin(request.POST)):
         raise Http404
     record_audit(request.user, record.owner, "extension_credential_filled", record=record, details={"hostname": hostname})
     return _extension_json({"username": str(record.data.get("username") or ""), "password": str(record.data.get("password") or "")})
@@ -1010,9 +1045,11 @@ def extension_save(request):
     else:
         name = _unique_record_name(project, folder, hostname)
     scheme = "http" if request.POST.get("scheme") == "http" else "https"
+    _scheme, port = _page_origin({"scheme": scheme, "port": request.POST.get("port", "")})
+    website = f"{scheme}://{hostname}" + ("" if port == DEFAULT_PORTS[scheme] else f":{port}")
     with transaction.atomic():
         record = Record.objects.create(owner=request.user, project=project, folder=folder, record_type="password", name=name,
-                                       data={"username": username, "password": password, "website": f"{scheme}://{hostname}", "notes": ""})
+                                       data={"username": username, "password": password, "website": website, "notes": ""})
         save_revision(record, request.user)
     record_audit(request.user, request.user, "extension_credential_saved", record=record, details={"hostname": hostname})
     return _extension_json({"id": record.pk, "name": record.name, "action": "created"}, status=201)

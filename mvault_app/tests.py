@@ -1393,3 +1393,53 @@ class AuditCoverageTests(TestCase):
         self.assertEqual(self.client.get(reverse("record_history", args=[self.record.pk])).status_code, 200)
         self.assertTrue(AuditEvent.objects.filter(action="record_history_viewed", record=self.record).exists())
         self.assertEqual(self.client.get(reverse("audit_log")).status_code, 200)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class ExtensionOriginTests(TestCase):
+    def setUp(self):
+        self.alex = User.objects.create_user("alex@example.test", "Secure-Password-2026!", "Alex Member")
+        self.project = Project.objects.create(owner=self.alex, name="Passwords", project_type="password_vault")
+        self.client.force_login(self.alex)
+
+    def record(self, website, name="Login"):
+        return Record.objects.create(owner=self.alex, project=self.project, record_type="password", name=name,
+                                     data={"username": "alex", "password": "p@ssword", "website": website, "notes": ""})
+
+    def fill(self, record, **page):
+        return self.client.post(reverse("extension_credential", args=[record.pk]), {"hostname": "bank.example.test", **page})
+
+    def matches(self, **page):
+        return [m["id"] for m in self.client.get(reverse("extension_matches"), {"hostname": "bank.example.test", **page}).json()["matches"]]
+
+    def test_an_https_login_is_never_offered_or_filled_on_a_plain_http_page(self):
+        secure = self.record("https://bank.example.test")
+        bare = self.record("bank.example.test", name="Bare")  # no scheme is read as https
+        for page in ({"scheme": "http", "port": ""}, {"scheme": "http", "port": "8080"}):
+            self.assertEqual(self.fill(secure, **page).status_code, 404)
+            self.assertEqual(self.fill(bare, **page).status_code, 404)
+            self.assertEqual(self.matches(**page), [])
+        self.assertEqual(self.fill(secure, scheme="https", port="").json()["password"], "p@ssword")
+        self.assertEqual(sorted(self.matches(scheme="https", port="")), sorted([secure.pk, bare.pk]))
+
+    def test_an_http_login_fills_on_http_and_https(self):
+        plain = self.record("http://bank.example.test")
+        self.assertEqual(self.fill(plain, scheme="http", port="").status_code, 200)
+        self.assertEqual(self.fill(plain, scheme="https", port="").status_code, 200)
+
+    def test_an_explicit_port_must_match(self):
+        dev = self.record("https://bank.example.test:8443")
+        self.assertEqual(self.fill(dev, scheme="https", port="8443").status_code, 200)
+        self.assertEqual(self.fill(dev, scheme="https", port="").status_code, 404)
+        self.assertEqual(self.fill(self.record("https://bank.example.test:443", name="Default"), scheme="https", port="").status_code, 200)
+
+    def test_older_extensions_without_origin_keep_hostname_matching(self):
+        self.assertEqual(self.fill(self.record("https://bank.example.test")).status_code, 200)
+
+    def test_saving_keeps_a_non_default_port_in_the_website(self):
+        response = self.client.post(reverse("extension_save"), {"mode": "create", "hostname": "bank.example.test", "username": "alex",
+                                                                 "password": "p", "scheme": "https", "port": "8443", "project_id": self.project.pk})
+        self.assertEqual(Record.objects.get(pk=response.json()["id"]).data["website"], "https://bank.example.test:8443")
+        response = self.client.post(reverse("extension_save"), {"mode": "create", "hostname": "bank.example.test", "username": "bob",
+                                                                 "password": "p", "scheme": "https", "port": "443", "project_id": self.project.pk})
+        self.assertEqual(Record.objects.get(pk=response.json()["id"]).data["website"], "https://bank.example.test")
