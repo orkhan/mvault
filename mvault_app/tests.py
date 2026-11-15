@@ -1277,3 +1277,21 @@ class RotateEncryptionKeyTests(TestCase):
         self.assertEqual(Record.objects.get(pk=record.pk).data, {"password": "p1"})
         with mock.patch.dict("os.environ", {"OLD_MVAULT_ENCRYPTION_KEY": "", "OLD_MVAULT_ENCRYPTION_SALT": ""}), self.assertRaises(CommandError):
             call_command("rotate_encryption_key", verbosity=0)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class AdminBootstrapTests(TestCase):
+    def test_ensure_admin_never_promotes_a_member_who_holds_the_admin_address(self):
+        member = User.objects.create_user("ops@example.test", "Secure-Password-2026!", "Member")
+        with override_settings(ADMIN_EMAIL="ops@example.test", ADMIN_PASSWORD="Bootstrap-Password-1"), self.assertRaises(CommandError):
+            call_command("ensure_admin", verbosity=0)
+        member.refresh_from_db()
+        self.assertFalse(member.is_admin)
+
+    def test_a_new_administrator_must_always_change_the_bootstrap_password(self):
+        with override_settings(ADMIN_EMAIL="new-admin@example.test", ADMIN_PASSWORD="Bootstrap-Password-1"):
+            call_command("ensure_admin", verbosity=0)
+            call_command("ensure_admin", verbosity=0)  # idempotent once the administrator exists
+        admin = User.objects.get(email="new-admin@example.test")
+        self.assertTrue(admin.is_admin)
+        self.assertTrue(admin.must_change_password)

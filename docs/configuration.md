@@ -63,7 +63,7 @@ Limits (compiled in): file records 50 MB, icons and avatars 2 MB.
 
 | Variable | Default | Req | Description |
 |---|---|---|---|
-| `MVAULT_ADMIN_EMAIL` | `admin@mvault.local` | ○ | E-mail of the administrator. Created at start if missing. **Set this to your existing admin address when upgrading from 0.3.x.** |
+| `MVAULT_ADMIN_EMAIL` | `admin@mvault.local` | ○ | E-mail of the administrator. Created at start if missing; start-up stops with an error if a member account already uses this address (members are never promoted). **Set this to your existing admin address when upgrading from 0.3.x.** |
 | `MVAULT_ADMIN_PASSWORD` | – | ◐ | Password for the first administrator; required on first start of the slim image (the all-in-one image generates one). Ignored once the admin exists. |
 | `MVAULT_LOGIN_MAX_ATTEMPTS` | `5` | ○ | Failed sign-ins per e-mail within the window before sign-in is blocked (HTTP 429). The per-address limit is 4× this value. |
 | `MVAULT_LOGIN_WINDOW_SECONDS` | `900` | ○ | Length of the throttling window. |
@@ -81,7 +81,7 @@ Used by the Docker images (`docker/entrypoint.sh` and the s6 services).
 | `MVAULT_PROVISION_BUCKETS` | `false` | slim; all-in-one with external storage | Create missing buckets at start (needs `s3:CreateBucket`). Embedded MinIO always provisions. |
 | `MVAULT_STORAGE` | `embedded` | all-in-one | Set `disabled` to run without any object storage. |
 | `MVAULT_AUTO_GENERATE_SECRETS` | `false` | all-in-one | Allow generating the encryption key/salt even with an external database. |
-| `MVAULT_ADMIN_MUST_CHANGE` | – | set by the image | `true` forces the first admin to change the password; the all-in-one image sets it when it generated the password. |
+| `MVAULT_ADMIN_MUST_CHANGE` | – | ignored | Deprecated: a newly created administrator must always change the bootstrap password. |
 | `MVAULT_DB_MODE`, `MVAULT_S3_MODE` | – | set by the image | `embedded`/`external`/`disabled`, derived from your settings. Internal; do not set. |
 
 ## Development
