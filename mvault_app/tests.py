@@ -1295,3 +1295,32 @@ class AdminBootstrapTests(TestCase):
         admin = User.objects.get(email="new-admin@example.test")
         self.assertTrue(admin.is_admin)
         self.assertTrue(admin.must_change_password)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class EmailChangeTests(TestCase):
+    def setUp(self):
+        self.alex = User.objects.create_user("alex@example.test", "Secure-Password-2026!", "Alex Member")
+        self.client.force_login(self.alex)
+
+    def save(self, **data):
+        return self.client.post(reverse("settings"), {"full_name": "Alex", "email": "alex@example.test", "preferred_language": "en", **data}, follow=True)
+
+    def test_changing_the_email_requires_the_current_password(self):
+        self.assertContains(self.save(email="new@example.test"), "Your current password is incorrect.")
+        self.assertContains(self.save(email="new@example.test", current_password="wrong"), "Your current password is incorrect.")
+        self.alex.refresh_from_db()
+        self.assertEqual(self.alex.email, "alex@example.test")
+        self.save(email="new@example.test", current_password="Secure-Password-2026!")
+        self.alex.refresh_from_db()
+        self.assertEqual(self.alex.email, "new@example.test")
+
+    def test_the_email_must_be_a_valid_address(self):
+        self.assertContains(self.save(email="not an email", current_password="Secure-Password-2026!"), "Enter a valid email address.")
+        self.alex.refresh_from_db()
+        self.assertEqual(self.alex.email, "alex@example.test")
+
+    def test_name_and_language_still_save_without_a_password(self):
+        self.save(full_name="Alex Renamed", preferred_language="ru")
+        self.alex.refresh_from_db()
+        self.assertEqual((self.alex.full_name, self.alex.preferred_language), ("Alex Renamed", "ru"))

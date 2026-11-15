@@ -12,6 +12,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseForbidden, JsonResponse, StreamingHttpResponse
@@ -263,6 +265,14 @@ def member_delete(request, user_id):
         return redirect("admin_dashboard")
     return render(request, "mvault/member_delete.html", {"member": member, "targets": targets})
 
+def _valid_email(value):
+    try:
+        validate_email(value)
+    except ValidationError:
+        return False
+    return True
+
+
 @member_required
 def settings_view(request):
     user = request.user
@@ -270,10 +280,16 @@ def settings_view(request):
         user.full_name = request.POST.get("full_name", "").strip()[:160]
         user.preferred_language = request.POST.get("preferred_language") if request.POST.get("preferred_language") in dict(settings.LANGUAGES) else "en"
         email = request.POST.get("email", "").strip().lower()
+        email_changed = email != user.email.lower()
         if not user.full_name or not email:
             messages.error(request, "Name and email are required.")
+        elif email_changed and not _valid_email(email):
+            messages.error(request, "Enter a valid email address.")
         elif User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
             messages.error(request, "That email address is already used.")
+        elif email_changed and not user.check_password(request.POST.get("current_password", "")):
+            # The e-mail is the sign-in name; a borrowed or stolen session must not be enough to change it.
+            messages.error(request, "Your current password is incorrect.")
         else:
             user.email = email
             user.save(update_fields=["full_name", "email", "preferred_language"])
