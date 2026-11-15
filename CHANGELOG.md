@@ -13,6 +13,9 @@ All notable changes to mVault are documented here. The format follows [Keep a Ch
 - Revoking a project or record share and opening a record's history (which shows past values unmasked) are now written to the activity log.
 - Chrome extension 1.3.0: a login saved for `https://` is no longer suggested or filled on a plain `http://` page of the same host (where a network attacker could inject a form), and an explicit port in the Website field must match. Saved logins keep a non-default port.
 
+### Documentation
+- Corrected the claim that the administrator cannot read members' records: a password reset or a delete-with-transfer gives access, so the administrator is a trusted party. Documented that ciphertext is not bound to its row, that CSV exports are not sanitised for spreadsheets, and when to turn `MVAULT_TRUST_PROXY` off.
+
 ## [0.8.0] - 2026-10-20
 
 ### Added

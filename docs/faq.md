@@ -18,7 +18,7 @@
 
 **Can people sign up themselves?** No. The administrator creates accounts.
 
-**Can the administrator read my records?** Not through the app: the administrator account has no vault. An operator with access to the server, database and key could, as with any self-hosted app.
+**Can the administrator read my records?** Not directly: the administrator account has no vault and cannot open records. But the administrator can set you a new temporary password and sign in as you, or delete your account with a transfer to another member, so treat the administrator as someone you trust with your data. Both actions show up: your old password stops working, and a password reset appears in your activity log. An operator with access to the server, database and key can read everything, as with any self-hosted app.
 
 **What happens if I lose the encryption key?** The encrypted values are unrecoverable. Back up key and salt separately ([Backup & restore](backup-restore.md)).
 
