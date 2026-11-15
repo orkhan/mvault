@@ -1020,7 +1020,7 @@ class ExportAllTests(TestCase):
         Record.objects.create(owner=self.sam, project=other, record_type="password", name="Hidden", data={"password": "nope"})
 
         self.assertEqual(self.client.get(reverse("export_all")).status_code, 405)
-        response = self.client.post(reverse("export_all"))
+        response = self.client.post(reverse("export_all"), {"current_password": "Secure-Password-2026!"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/zip")
         archive = zipfile.ZipFile(io.BytesIO(b"".join(response.streaming_content)))
@@ -1349,3 +1349,22 @@ class LockoutTests(TestCase):
         for i in range(12):
             self.attempt("wrong", "203.0.113.9", email=f"user{i}@example.test")
         self.assertEqual(self.attempt("Secure-Password-2026!", "203.0.113.9").status_code, 429)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class ExportReauthTests(TestCase):
+    def setUp(self):
+        self.alex = User.objects.create_user("alex@example.test", "Secure-Password-2026!", "Alex Member")
+        project = Project.objects.create(owner=self.alex, name="Passwords", project_type="password_vault")
+        Record.objects.create(owner=self.alex, project=project, record_type="password", name="Mail", data={"password": "p@ssword"})
+        self.client.force_login(self.alex)
+
+    def test_export_requires_the_current_password(self):
+        for data in ({}, {"current_password": "wrong"}):
+            response = self.client.post(reverse("export_all"), data, follow=True)
+            self.assertContains(response, "Your current password is incorrect.")
+            self.assertNotEqual(response.get("Content-Type"), "application/zip")
+        self.assertFalse(AuditEvent.objects.filter(action="data_exported").exists())
+        ok = self.client.post(reverse("export_all"), {"current_password": "Secure-Password-2026!"})
+        self.assertEqual(ok["Content-Type"], "application/zip")
+        self.assertTrue(AuditEvent.objects.filter(action="data_exported").exists())

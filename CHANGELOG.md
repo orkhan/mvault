@@ -9,6 +9,7 @@ All notable changes to mVault are documented here. The format follows [Keep a Ch
 - A newly created administrator must always change the bootstrap password, also when it was supplied or reused from a saved secrets file (`MVAULT_ADMIN_MUST_CHANGE` is no longer needed).
 - Changing your e-mail address (your sign-in name) in *Settings* now asks for your current password and checks that the address is valid.
 - Sign-in throttling no longer lets anyone who knows a member's e-mail lock them out: the tight limit now counts failures per e-mail *and* client address. Looser per-address (4×) and per-e-mail (10×) limits remain against spraying and distributed guessing.
+- *Settings → Export all data* asks for your current password, since the ZIP holds every secret in plain text.
 
 ## [0.8.0] - 2026-10-20
 

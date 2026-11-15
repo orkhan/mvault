@@ -17,7 +17,7 @@ The 256-bit key is derived with scrypt from two secrets you control, `MVAULT_ENC
 - **A compromised running server.** The key must be available to the app to decrypt values for display, so anyone who controls the application process, its environment or its host can read everything. This is not end-to-end encryption and the server operator is trusted.
 - **Plaintext metadata:** record titles/keys, project and folder names, member names and e-mail addresses, the audit log, timestamps, file sizes and checksums.
 - **File contents.** Files are stored as-is in the **private** `mvault-attachments` bucket and streamed through the app after access checks; they are not separately encrypted. Protect the storage with disk encryption and keep the bucket private. Icons and avatars are images you chose to upload.
-- **Plain-text exports.** *Export all data* produces decrypted CSVs; delete them after use.
+- **Plain-text exports.** *Export all data* produces decrypted CSVs (it asks for your current password first); delete them after use.
 - **The administrator** has no vault and cannot open records through the app, but an administrator who also controls the server can read the database and key like any operator.
 - **Clients.** A device with an unlocked browser session sees what you see; shared computers need care.
 

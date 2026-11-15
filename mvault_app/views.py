@@ -1050,6 +1050,10 @@ def _unique(name, used):
 def export_all(request):
     """Download every active project/folder/record of the member as a ZIP of CSV files (decrypted) plus attached files."""
     user = request.user
+    if not user.check_password(request.POST.get("current_password", "")):
+        # Every secret leaves in plain text; an unattended or stolen session alone must not be enough.
+        messages.error(request, "Your current password is incorrect.")
+        return redirect("settings")
     records = (Record.objects.filter(owner=user, is_deleted=False, project__owner=user, project__is_deleted=False)
                .exclude(folder__is_deleted=True).select_related("project", "folder").order_by("project__name", "folder__name", "name", "id"))
     groups = {}
