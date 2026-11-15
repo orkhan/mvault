@@ -18,8 +18,15 @@ def _recent(**filters):
 
 
 def is_blocked(email, ip):
+    """Refuse sign-in after too many recent failures.
+
+    The tight limit counts failures for this e-mail *from this address*, so a few wrong guesses from one place
+    do not block the member everywhere. Per address and per e-mail (from anywhere) there are looser limits
+    that still stop spraying many accounts or guessing one account from many addresses.
+    """
     limit = settings.LOGIN_MAX_ATTEMPTS
-    return _recent(email=email).count() >= limit or _recent(ip=ip).count() >= limit * 4
+    return (_recent(email=email, ip=ip).count() >= limit or _recent(ip=ip).count() >= limit * 4
+            or _recent(email=email).count() >= limit * 10)
 
 
 def record_failure(email, ip):

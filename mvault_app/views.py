@@ -12,6 +12,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseForbidden, JsonResponse, StreamingHttpResponse
@@ -263,6 +265,14 @@ def member_delete(request, user_id):
         return redirect("admin_dashboard")
     return render(request, "mvault/member_delete.html", {"member": member, "targets": targets})
 
+def _valid_email(value):
+    try:
+        validate_email(value)
+    except ValidationError:
+        return False
+    return True
+
+
 @member_required
 def settings_view(request):
     user = request.user
@@ -270,10 +280,16 @@ def settings_view(request):
         user.full_name = request.POST.get("full_name", "").strip()[:160]
         user.preferred_language = request.POST.get("preferred_language") if request.POST.get("preferred_language") in dict(settings.LANGUAGES) else "en"
         email = request.POST.get("email", "").strip().lower()
+        email_changed = email != user.email.lower()
         if not user.full_name or not email:
             messages.error(request, "Name and email are required.")
+        elif email_changed and not _valid_email(email):
+            messages.error(request, "Enter a valid email address.")
         elif User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
             messages.error(request, "That email address is already used.")
+        elif email_changed and not user.check_password(request.POST.get("current_password", "")):
+            # The e-mail is the sign-in name; a borrowed or stolen session must not be enough to change it.
+            messages.error(request, "Your current password is incorrect.")
         else:
             user.email = email
             user.save(update_fields=["full_name", "email", "preferred_language"])
@@ -606,6 +622,7 @@ def folder_delete(request, folder_id):
 def record_history(request, record_id):
     record = get_object_or_404(Record, pk=record_id, owner=request.user)
     revisions = record.revisions.select_related("actor")
+    record_audit(request.user, request.user, "record_history_viewed", record=record)  # revisions show past secrets unmasked
     return render(request, "mvault/history.html", {"record": record, "revisions": revisions})
 
 @member_required
@@ -860,6 +877,40 @@ def _record_hostname(record):
         return ""
 
 
+DEFAULT_PORTS = {"http": "80", "https": "443"}
+
+
+def _page_origin(params):
+    """(scheme, port) of the page the extension acts on; scheme is None for extensions older than 1.3.0."""
+    scheme = params.get("scheme")
+    port = params.get("port", "")
+    if scheme not in DEFAULT_PORTS:
+        return None, ""
+    if not (port.isascii() and port.isdigit() and 0 < int(port) < 65536):
+        port = ""
+    return scheme, port or DEFAULT_PORTS[scheme]
+
+
+def _origin_allows(record, page):
+    """Never hand an https login to a plain-http page, and honour an explicit port in the Website field.
+
+    The hostname has already matched. A network attacker can serve http://<host> but not https://<host>, so
+    a record saved for https must not be offered there. Records saved for http may still fill on https.
+    """
+    scheme, port = page
+    if scheme is None:
+        return True
+    website = str(record.data.get("website", "")).strip()
+    try:
+        parts = urlsplit(website if "://" in website else f"https://{website}")
+        record_port = parts.port
+    except ValueError:
+        return False
+    if parts.scheme.lower() != "http" and scheme != "https":
+        return False
+    return record_port is None or str(record_port) == port
+
+
 def _extension_json(payload, status=200):
     response = JsonResponse(payload, status=status)
     response["Cache-Control"] = "no-store"
@@ -881,8 +932,9 @@ def extension_matches(request):
     hostname = _extension_hostname(request.GET.get("hostname"))
     if not hostname:
         return JsonResponse({"error": "Invalid hostname."}, status=400)
+    page = _page_origin(request.GET)
     matches = [{"id": record.pk, "name": record.name, "username": str(record.data.get("username") or "")}
-               for record in _accessible_password_records(request.user) if _record_hostname(record) == hostname]
+               for record in _accessible_password_records(request.user) if _record_hostname(record) == hostname and _origin_allows(record, page)]
     return _extension_json({"matches": matches})
 
 
@@ -898,7 +950,7 @@ def extension_credential(request, record_id):
         pk=record_id, record_type="password", is_deleted=False, project__is_deleted=False,
     )
     allowed, _shared = record_accessible(request.user, record)
-    if not allowed or _record_hostname(record) != hostname:
+    if not allowed or _record_hostname(record) != hostname or not _origin_allows(record, _page_origin(request.POST)):
         raise Http404
     record_audit(request.user, record.owner, "extension_credential_filled", record=record, details={"hostname": hostname})
     return _extension_json({"username": str(record.data.get("username") or ""), "password": str(record.data.get("password") or "")})
@@ -993,9 +1045,11 @@ def extension_save(request):
     else:
         name = _unique_record_name(project, folder, hostname)
     scheme = "http" if request.POST.get("scheme") == "http" else "https"
+    _scheme, port = _page_origin({"scheme": scheme, "port": request.POST.get("port", "")})
+    website = f"{scheme}://{hostname}" + ("" if port == DEFAULT_PORTS[scheme] else f":{port}")
     with transaction.atomic():
         record = Record.objects.create(owner=request.user, project=project, folder=folder, record_type="password", name=name,
-                                       data={"username": username, "password": password, "website": f"{scheme}://{hostname}", "notes": ""})
+                                       data={"username": username, "password": password, "website": website, "notes": ""})
         save_revision(record, request.user)
     record_audit(request.user, request.user, "extension_credential_saved", record=record, details={"hostname": hostname})
     return _extension_json({"id": record.pk, "name": record.name, "action": "created"}, status=201)
@@ -1011,6 +1065,8 @@ def share_revoke(request, kind, share_id):
         raise Http404
     grant.revoked_at = timezone.now()
     grant.save(update_fields=["revoked_at"])
+    record_audit(request.user, request.user, "share_revoked", record=grant.record if kind == "record" else None,
+                 project=grant.project if kind == "project" else None, details={"recipient": grant.recipient.email})
     messages.success(request, "Share revoked.")
     return redirect("project_detail", project_id=grant.project_id) if kind == "project" else redirect("record_detail", record_id=grant.record_id)
 
@@ -1034,6 +1090,10 @@ def _unique(name, used):
 def export_all(request):
     """Download every active project/folder/record of the member as a ZIP of CSV files (decrypted) plus attached files."""
     user = request.user
+    if not user.check_password(request.POST.get("current_password", "")):
+        # Every secret leaves in plain text; an unattended or stolen session alone must not be enough.
+        messages.error(request, "Your current password is incorrect.")
+        return redirect("settings")
     records = (Record.objects.filter(owner=user, is_deleted=False, project__owner=user, project__is_deleted=False)
                .exclude(folder__is_deleted=True).select_related("project", "folder").order_by("project__name", "folder__name", "name", "id"))
     groups = {}

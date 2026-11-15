@@ -1020,7 +1020,7 @@ class ExportAllTests(TestCase):
         Record.objects.create(owner=self.sam, project=other, record_type="password", name="Hidden", data={"password": "nope"})
 
         self.assertEqual(self.client.get(reverse("export_all")).status_code, 405)
-        response = self.client.post(reverse("export_all"))
+        response = self.client.post(reverse("export_all"), {"current_password": "Secure-Password-2026!"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/zip")
         archive = zipfile.ZipFile(io.BytesIO(b"".join(response.streaming_content)))
@@ -1277,3 +1277,184 @@ class RotateEncryptionKeyTests(TestCase):
         self.assertEqual(Record.objects.get(pk=record.pk).data, {"password": "p1"})
         with mock.patch.dict("os.environ", {"OLD_MVAULT_ENCRYPTION_KEY": "", "OLD_MVAULT_ENCRYPTION_SALT": ""}), self.assertRaises(CommandError):
             call_command("rotate_encryption_key", verbosity=0)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class AdminBootstrapTests(TestCase):
+    def test_ensure_admin_never_promotes_a_member_while_an_administrator_exists(self):
+        User.objects.create_superuser("admin@example.test", "Secure-Admin-2026!", "Admin")
+        member = User.objects.create_user("ops@example.test", "Secure-Password-2026!", "Member")
+        with override_settings(ADMIN_EMAIL="ops@example.test", ADMIN_PASSWORD="Bootstrap-Password-1"), self.assertRaises(CommandError):
+            call_command("ensure_admin", verbosity=0)
+        member.refresh_from_db()
+        self.assertFalse(member.is_admin)
+
+    def test_ensure_admin_may_designate_an_account_when_there_is_no_administrator(self):
+        user = User.objects.create_user("ops@example.test", "Secure-Password-2026!", "Operator")
+        with override_settings(ADMIN_EMAIL="ops@example.test", ADMIN_PASSWORD=""):
+            call_command("ensure_admin", verbosity=0)
+        user.refresh_from_db()
+        self.assertTrue(user.is_admin)
+
+    def test_a_new_administrator_must_always_change_the_bootstrap_password(self):
+        with override_settings(ADMIN_EMAIL="new-admin@example.test", ADMIN_PASSWORD="Bootstrap-Password-1"):
+            call_command("ensure_admin", verbosity=0)
+            call_command("ensure_admin", verbosity=0)  # idempotent once the administrator exists
+        admin = User.objects.get(email="new-admin@example.test")
+        self.assertTrue(admin.is_admin)
+        self.assertTrue(admin.must_change_password)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class EmailChangeTests(TestCase):
+    def setUp(self):
+        self.alex = User.objects.create_user("alex@example.test", "Secure-Password-2026!", "Alex Member")
+        self.client.force_login(self.alex)
+
+    def save(self, **data):
+        return self.client.post(reverse("settings"), {"full_name": "Alex", "email": "alex@example.test", "preferred_language": "en", **data}, follow=True)
+
+    def test_changing_the_email_requires_the_current_password(self):
+        self.assertContains(self.save(email="new@example.test"), "Your current password is incorrect.")
+        self.assertContains(self.save(email="new@example.test", current_password="wrong"), "Your current password is incorrect.")
+        self.alex.refresh_from_db()
+        self.assertEqual(self.alex.email, "alex@example.test")
+        self.save(email="new@example.test", current_password="Secure-Password-2026!")
+        self.alex.refresh_from_db()
+        self.assertEqual(self.alex.email, "new@example.test")
+
+    def test_the_email_must_be_a_valid_address(self):
+        self.assertContains(self.save(email="not an email", current_password="Secure-Password-2026!"), "Enter a valid email address.")
+        self.alex.refresh_from_db()
+        self.assertEqual(self.alex.email, "alex@example.test")
+
+    def test_name_and_language_still_save_without_a_password(self):
+        self.save(full_name="Alex Renamed", preferred_language="ru")
+        self.alex.refresh_from_db()
+        self.assertEqual((self.alex.full_name, self.alex.preferred_language), ("Alex Renamed", "ru"))
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"], LOGIN_MAX_ATTEMPTS=3, TRUST_PROXY_HEADERS=False)
+class LockoutTests(TestCase):
+    def setUp(self):
+        self.alex = User.objects.create_user("alex@example.test", "Secure-Password-2026!", "Alex Member")
+
+    def attempt(self, password, ip, email="alex@example.test"):
+        return self.client.post(reverse("login"), {"username": email, "password": password}, REMOTE_ADDR=ip)
+
+    def test_failures_from_one_address_do_not_lock_the_member_out_elsewhere(self):
+        for _ in range(3):
+            self.attempt("wrong", "203.0.113.9")
+        self.assertEqual(self.attempt("Secure-Password-2026!", "203.0.113.9").status_code, 429)
+        self.assertEqual(self.attempt("Secure-Password-2026!", "198.51.100.7").status_code, 302)
+
+    def test_guessing_one_account_from_many_addresses_is_still_limited(self):
+        for i in range(30):
+            self.attempt("wrong", f"192.0.2.{i}")
+        self.assertEqual(self.attempt("Secure-Password-2026!", "198.51.100.7").status_code, 429)
+
+    def test_spraying_many_accounts_from_one_address_is_limited(self):
+        for i in range(12):
+            self.attempt("wrong", "203.0.113.9", email=f"user{i}@example.test")
+        self.assertEqual(self.attempt("Secure-Password-2026!", "203.0.113.9").status_code, 429)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class ExportReauthTests(TestCase):
+    def setUp(self):
+        self.alex = User.objects.create_user("alex@example.test", "Secure-Password-2026!", "Alex Member")
+        project = Project.objects.create(owner=self.alex, name="Passwords", project_type="password_vault")
+        Record.objects.create(owner=self.alex, project=project, record_type="password", name="Mail", data={"password": "p@ssword"})
+        self.client.force_login(self.alex)
+
+    def test_export_requires_the_current_password(self):
+        for data in ({}, {"current_password": "wrong"}):
+            response = self.client.post(reverse("export_all"), data, follow=True)
+            self.assertContains(response, "Your current password is incorrect.")
+            self.assertNotEqual(response.get("Content-Type"), "application/zip")
+        self.assertFalse(AuditEvent.objects.filter(action="data_exported").exists())
+        ok = self.client.post(reverse("export_all"), {"current_password": "Secure-Password-2026!"})
+        self.assertEqual(ok["Content-Type"], "application/zip")
+        self.assertTrue(AuditEvent.objects.filter(action="data_exported").exists())
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class AuditCoverageTests(TestCase):
+    def setUp(self):
+        self.alex = User.objects.create_user("alex@example.test", "Secure-Password-2026!", "Alex Member")
+        self.sam = User.objects.create_user("sam@example.test", "Secure-Password-2026!", "Sam Member")
+        self.project = Project.objects.create(owner=self.alex, name="Passwords", project_type="password_vault")
+        self.record = Record.objects.create(owner=self.alex, project=self.project, record_type="password", name="Mail", data={"password": "p@ssword"})
+        self.client.force_login(self.alex)
+
+    def test_revoking_shares_is_audited(self):
+        record_share = RecordShare.objects.create(record=self.record, recipient=self.sam, created_by=self.alex)
+        project_share = ProjectShare.objects.create(project=self.project, recipient=self.sam, created_by=self.alex)
+        self.client.post(reverse("share_revoke", args=["record", record_share.pk]))
+        self.client.post(reverse("share_revoke", args=["project", project_share.pk]))
+        events = AuditEvent.objects.filter(action="share_revoked", actor=self.alex)
+        self.assertEqual(events.count(), 2)
+        self.assertTrue(events.filter(record=self.record, details__recipient="sam@example.test").exists())
+        self.assertTrue(events.filter(project=self.project, record__isnull=True).exists())
+
+    def test_viewing_record_history_is_audited(self):
+        self.assertEqual(self.client.get(reverse("record_history", args=[self.record.pk])).status_code, 200)
+        self.assertTrue(AuditEvent.objects.filter(action="record_history_viewed", record=self.record).exists())
+        self.assertEqual(self.client.get(reverse("audit_log")).status_code, 200)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class ExtensionOriginTests(TestCase):
+    def setUp(self):
+        self.alex = User.objects.create_user("alex@example.test", "Secure-Password-2026!", "Alex Member")
+        self.project = Project.objects.create(owner=self.alex, name="Passwords", project_type="password_vault")
+        self.client.force_login(self.alex)
+
+    def record(self, website, name="Login"):
+        return Record.objects.create(owner=self.alex, project=self.project, record_type="password", name=name,
+                                     data={"username": "alex", "password": "p@ssword", "website": website, "notes": ""})
+
+    def fill(self, record, **page):
+        return self.client.post(reverse("extension_credential", args=[record.pk]), {"hostname": "bank.example.test", **page})
+
+    def matches(self, **page):
+        return [m["id"] for m in self.client.get(reverse("extension_matches"), {"hostname": "bank.example.test", **page}).json()["matches"]]
+
+    def test_an_https_login_is_never_offered_or_filled_on_a_plain_http_page(self):
+        secure = self.record("https://bank.example.test")
+        bare = self.record("bank.example.test", name="Bare")  # no scheme is read as https
+        for page in ({"scheme": "http", "port": ""}, {"scheme": "http", "port": "8080"}):
+            self.assertEqual(self.fill(secure, **page).status_code, 404)
+            self.assertEqual(self.fill(bare, **page).status_code, 404)
+            self.assertEqual(self.matches(**page), [])
+        self.assertEqual(self.fill(secure, scheme="https", port="").json()["password"], "p@ssword")
+        self.assertEqual(sorted(self.matches(scheme="https", port="")), sorted([secure.pk, bare.pk]))
+
+    def test_an_http_login_fills_on_http_and_https(self):
+        plain = self.record("http://bank.example.test")
+        self.assertEqual(self.fill(plain, scheme="http", port="").status_code, 200)
+        self.assertEqual(self.fill(plain, scheme="https", port="").status_code, 200)
+
+    def test_an_explicit_port_must_match(self):
+        dev = self.record("https://bank.example.test:8443")
+        self.assertEqual(self.fill(dev, scheme="https", port="8443").status_code, 200)
+        self.assertEqual(self.fill(dev, scheme="https", port="").status_code, 404)
+        self.assertEqual(self.fill(self.record("https://bank.example.test:443", name="Default"), scheme="https", port="").status_code, 200)
+
+    def test_older_extensions_without_origin_keep_hostname_matching(self):
+        self.assertEqual(self.fill(self.record("https://bank.example.test")).status_code, 200)
+
+    def test_saving_keeps_a_non_default_port_in_the_website(self):
+        response = self.client.post(reverse("extension_save"), {"mode": "create", "hostname": "bank.example.test", "username": "alex",
+                                                                 "password": "p", "scheme": "https", "port": "8443", "project_id": self.project.pk})
+        self.assertEqual(Record.objects.get(pk=response.json()["id"]).data["website"], "https://bank.example.test:8443")
+        response = self.client.post(reverse("extension_save"), {"mode": "create", "hostname": "bank.example.test", "username": "bob",
+                                                                 "password": "p", "scheme": "https", "port": "443", "project_id": self.project.pk})
+        self.assertEqual(Record.objects.get(pk=response.json()["id"]).data["website"], "https://bank.example.test")
+
+
+class WebsiteSchemeTests(TestCase):
+    def test_a_bare_website_host_is_stored_as_https(self):
+        form = RecordForm({"record_type": "password", "name": "n", "website": "bank.example.test"}, project_type="password_vault")
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.payload()["website"], "https://bank.example.test")

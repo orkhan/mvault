@@ -84,7 +84,7 @@ class RecordForm(forms.Form):
     name = forms.CharField(max_length=160, label="Title / key")
     username = forms.CharField(max_length=240, required=False)
     password = forms.CharField(required=False, widget=forms.PasswordInput(render_value=True))
-    website = forms.URLField(required=False)
+    website = forms.URLField(required=False, assume_scheme="https")  # a bare host must not become http:// (extension origin matching)
     cardholder = forms.CharField(max_length=160, required=False)
     number = forms.CharField(max_length=23, required=False, widget=forms.TextInput(attrs={"inputmode": "numeric", "autocomplete": "off", "data-card": "number", "pattern": r"[0-9 \-]{12,23}"}))
     expiration = forms.CharField(max_length=7, required=False, widget=forms.TextInput(attrs={"inputmode": "numeric", "autocomplete": "off", "placeholder": "MM/YY", "data-card": "expiration", "pattern": r"(0[1-9]|1[0-2]) ?/ ?(\d{2}|\d{4})"}))

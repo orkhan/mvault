@@ -45,11 +45,11 @@ function setBadge(tabId, text, title) {
 chrome.tabs.onUpdated.addListener((tabId, info) => { if (info.status === "loading") setBadge(tabId, ""); });
 chrome.tabs.onRemoved.addListener((tabId) => { chrome.storage.session.remove([`pending:${tabId}`, `step:${tabId}`, `filled:${tabId}`]); });
 
-async function lookup(base, host, fresh) {
-  const key = `matches:${host}`;
+async function lookup(base, host, origin, fresh) {
+  const key = `matches:${origin.scheme}://${host}:${origin.port}`;
   const cached = await sessionGet(key);
   if (!fresh && cached && Date.now() - cached.at < CACHE_TTL) return { matches: cached.matches };
-  const result = await MvVault.request(base, "GET", "/extension/matches/", { hostname: host });
+  const result = await MvVault.request(base, "GET", "/extension/matches/", { hostname: host, ...origin });
   if (!result.data) return result;
   await sessionSet(key, { at: Date.now(), matches: result.data.matches });
   return { matches: result.data.matches };
@@ -64,7 +64,7 @@ async function readPending(tabId) {
 
 // Decides what to offer for a captured login. The password only leaves the worker in the save-check POST.
 async function decide(base, pending) {
-  const found = await lookup(base, pending.host, true);
+  const found = await lookup(base, pending.host, pending.origin, true);
   if (!found.matches) return { error: true };
   const username = pending.username.toLowerCase();
   if (!found.matches.some((match) => match.username.trim().toLowerCase() === username)) {
@@ -90,12 +90,14 @@ async function handle(message, sender) {
   const url = new URL(sender.url);
   if (!/^https?:$/.test(url.protocol)) return {};
   const host = url.hostname;
+  // Sent with every lookup so the server never offers an https login to a plain-http page.
+  const origin = { scheme: url.protocol.slice(0, -1), port: url.port };
   const base = s.vaultBase;
 
   switch (message.type) {
     case "pageReady": {
       if (!s.autoShow || s.neverShow.includes(host)) return { matches: [] };
-      const found = await lookup(base, host);
+      const found = await lookup(base, host, origin);
       if (found.matches?.length) setBadge(tabId, String(found.matches.length), t("badgeMatches"));
       else if (found.signedOut) setBadge(tabId, "!", t("badgeSignIn"));
       return { matches: found.matches || [] };
@@ -103,7 +105,7 @@ async function handle(message, sender) {
     case "fill": {
       const id = Number(message.recordId);
       if (!Number.isSafeInteger(id) || id <= 0) return { error: t("retrievalError") };
-      const result = await MvVault.request(base, "POST", `/extension/records/${id}/`, { hostname: host }, { interactive: true });
+      const result = await MvVault.request(base, "POST", `/extension/records/${id}/`, { hostname: host, ...origin }, { interactive: true });
       if (!result.data) return { error: result.error || t("retrievalError") };
       await sessionSet(`filled:${tabId}`, { password: result.data.password, at: Date.now() });
       return { username: result.data.username, password: result.data.password };
@@ -123,7 +125,7 @@ async function handle(message, sender) {
       const step = await sessionGet(`step:${tabId}`);
       const typed = typeof message.username === "string" ? message.username.trim().slice(0, 255) : "";
       const username = typed || (step && step.host === host && step.expires > Date.now() ? step.username : "");
-      await sessionSet(`pending:${tabId}`, { host, scheme: url.protocol === "http:" ? "http" : "https", username, password: message.password, expires: Date.now() + PENDING_TTL });
+      await sessionSet(`pending:${tabId}`, { host, origin, scheme: url.protocol === "http:" ? "http" : "https", username, password: message.password, expires: Date.now() + PENDING_TTL });
       return {};
     }
     case "getPending": {
@@ -150,7 +152,7 @@ async function handle(message, sender) {
       const pending = await readPending(tabId);
       if (!pending?.decision) return { error: t("saveFailed") };
       const { decision } = pending;
-      const params = { hostname: pending.host, username: pending.username, password: pending.password, scheme: pending.scheme };
+      const params = { hostname: pending.host, username: pending.username, password: pending.password, scheme: pending.scheme, port: pending.origin?.port || "" };
       if (decision.state === "update") {
         Object.assign(params, { mode: "update", record_id: decision.record.id });
       } else {
@@ -159,7 +161,7 @@ async function handle(message, sender) {
       }
       const result = await MvVault.request(base, "POST", "/extension/save/", params, { interactive: true });
       if (!result.data) return { error: result.error || t("saveFailed") };
-      await chrome.storage.session.remove([`pending:${tabId}`, `matches:${host}`]);
+      await chrome.storage.session.remove([`pending:${tabId}`, `matches:${origin.scheme}://${host}:${origin.port}`]);
       if (params.mode === "create") await chrome.storage.local.set({ lastTarget: { projectId: params.project_id, folderId: Number(message.folderId) || null } });
       return { action: result.data.action };
     }

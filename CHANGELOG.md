@@ -4,6 +4,19 @@ All notable changes to mVault are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Security
+- `ensure_admin` no longer promotes an existing member whose e-mail matches `MVAULT_ADMIN_EMAIL` while another administrator exists; start-up stops with an error instead. A member could otherwise claim the address before an operator switched the administrator to it. Designating an account when there is no administrator at all still works.
+- A newly created administrator must always change the bootstrap password, also when it was supplied or reused from a saved secrets file (`MVAULT_ADMIN_MUST_CHANGE` is no longer needed).
+- Changing your e-mail address (your sign-in name) in *Settings* now asks for your current password and checks that the address is valid.
+- Sign-in throttling makes locking a member out much harder: the tight limit now counts failures per e-mail *and* client address, so a few wrong guesses from one place no longer block the correct password everywhere. Looser per-address (4×) and per-e-mail (10×) limits remain against spraying and distributed guessing; an attacker with many (or forged) addresses can still cause a temporary lockout.
+- *Settings → Export all data* asks for your current password, since the ZIP holds every secret in plain text.
+- Revoking a project or record share and opening a record's history (which shows past values unmasked) are now written to the activity log.
+- Chrome extension 1.3.0: a login saved for `https://` is no longer suggested or filled on a plain `http://` page of the same host (where a network attacker could inject a form), and an explicit port in the Website field must match. Saved logins keep a non-default port.
+- A Website entered without a scheme (`bank.example`) is now stored as `https://bank.example` instead of `http://…`. Existing records saved as `http://` still fill on plain-http pages; edit them to `https://` if the site uses HTTPS.
+
+### Documentation
+- Corrected the claim that the administrator cannot read members' records: a password reset or a delete-with-transfer gives access, so the administrator is a trusted party. Documented that ciphertext is not bound to its row, that CSV exports are not sanitised for spreadsheets, and when to turn `MVAULT_TRUST_PROXY` off.
+
 ## [0.8.0] - 2026-10-20
 
 ### Added

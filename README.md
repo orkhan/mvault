@@ -47,7 +47,7 @@ mVault keeps a family's sensitive things in one private place: logins, bank card
 - **History and audit** – every record keeps its revisions; a paginated activity log shows who did what.
 - **Export everything** – *Settings → Export all data* downloads a ZIP shaped like your tree, with a CSV of decrypted values per folder and file records as the original files. (It contains secrets in plain text; guard it.)
 - **Encryption at rest** – record values, history and attachment metadata are stored as AES-256-GCM ciphertext; see [Security](docs/security.md) for exactly what is and isn't covered.
-- **Admin-managed accounts** – no self-registration. An administrator creates members, resets passwords, deactivates or deletes accounts (transfer or purge). The administrator has no vault of their own and cannot read members' records through the app.
+- **Admin-managed accounts** – no self-registration. An administrator creates members, resets passwords, deactivates or deletes accounts (transfer or purge). The administrator has no vault of their own, but is a trusted party: resetting a member's password or deleting a member with a transfer hands over access to that member's records (see [Security](docs/security.md#what-it-does-not-cover)).
 - **Multilingual** interface (English, Russian, Azerbaijani, Turkish, Spanish, Belarusian, Ukrainian), chosen per member.
 - **Hardened by default** – Argon2id password hashes, sign-in throttling, a Content-Security-Policy, secure cookies and HSTS when served over HTTPS.
 
