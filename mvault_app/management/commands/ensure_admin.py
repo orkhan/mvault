@@ -9,10 +9,15 @@ class Command(BaseCommand):
         password = settings.ADMIN_PASSWORD
         admin = User.objects.filter(email__iexact=email).first()
         if admin:
-            # Never promote a member: members choose their own e-mail address, so one could claim the
-            # configured administrator address before an operator changes MVAULT_ADMIN_EMAIL to it.
             if not admin.is_admin:
-                raise CommandError("MVAULT_ADMIN_EMAIL belongs to a member account; choose another address for the administrator")
+                # Members choose their own e-mail address, so one could claim the configured administrator
+                # address before an operator switches MVAULT_ADMIN_EMAIL to it. Promote only when there is no
+                # administrator at all (an operator deliberately designating an account).
+                if User.objects.filter(is_admin=True).exists():
+                    raise CommandError("MVAULT_ADMIN_EMAIL belongs to a member account while another administrator exists; choose another address")
+                admin.is_admin = True
+                admin.is_staff = True
+                admin.save(update_fields=["is_admin", "is_staff"])
             self.stdout.write("mVault administrator already exists")
             return
         if not password:

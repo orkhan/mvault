@@ -1281,12 +1281,20 @@ class RotateEncryptionKeyTests(TestCase):
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
 class AdminBootstrapTests(TestCase):
-    def test_ensure_admin_never_promotes_a_member_who_holds_the_admin_address(self):
+    def test_ensure_admin_never_promotes_a_member_while_an_administrator_exists(self):
+        User.objects.create_superuser("admin@example.test", "Secure-Admin-2026!", "Admin")
         member = User.objects.create_user("ops@example.test", "Secure-Password-2026!", "Member")
         with override_settings(ADMIN_EMAIL="ops@example.test", ADMIN_PASSWORD="Bootstrap-Password-1"), self.assertRaises(CommandError):
             call_command("ensure_admin", verbosity=0)
         member.refresh_from_db()
         self.assertFalse(member.is_admin)
+
+    def test_ensure_admin_may_designate_an_account_when_there_is_no_administrator(self):
+        user = User.objects.create_user("ops@example.test", "Secure-Password-2026!", "Operator")
+        with override_settings(ADMIN_EMAIL="ops@example.test", ADMIN_PASSWORD=""):
+            call_command("ensure_admin", verbosity=0)
+        user.refresh_from_db()
+        self.assertTrue(user.is_admin)
 
     def test_a_new_administrator_must_always_change_the_bootstrap_password(self):
         with override_settings(ADMIN_EMAIL="new-admin@example.test", ADMIN_PASSWORD="Bootstrap-Password-1"):
@@ -1443,3 +1451,10 @@ class ExtensionOriginTests(TestCase):
         response = self.client.post(reverse("extension_save"), {"mode": "create", "hostname": "bank.example.test", "username": "bob",
                                                                  "password": "p", "scheme": "https", "port": "443", "project_id": self.project.pk})
         self.assertEqual(Record.objects.get(pk=response.json()["id"]).data["website"], "https://bank.example.test")
+
+
+class WebsiteSchemeTests(TestCase):
+    def test_a_bare_website_host_is_stored_as_https(self):
+        form = RecordForm({"record_type": "password", "name": "n", "website": "bank.example.test"}, project_type="password_vault")
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.payload()["website"], "https://bank.example.test")
